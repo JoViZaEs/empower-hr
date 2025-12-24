@@ -7,6 +7,7 @@ import Dashboard from "./pages/Dashboard";
 import Empleados from "./pages/Empleados";
 import Vigilancias from "./pages/Vigilancias";
 import Examenes from "./pages/Examenes";
+import Cursos from "./pages/Cursos";
 import Dotacion from "./pages/Dotacion";
 import Comites from "./pages/Comites";
 import Eventos from "./pages/Eventos";
@@ -26,6 +27,7 @@ const App = () => (
           <Route path="/empleados" element={<Empleados />} />
           <Route path="/vigilancias" element={<Vigilancias />} />
           <Route path="/examenes" element={<Examenes />} />
+          <Route path="/cursos" element={<Cursos />} />
           <Route path="/dotacion" element={<Dotacion />} />
           <Route path="/comites" element={<Comites />} />
           <Route path="/eventos" element={<Eventos />} />
