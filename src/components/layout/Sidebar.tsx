@@ -14,6 +14,9 @@ import {
   ChevronRight,
   Building2,
   LogOut,
+  ClipboardCheck,
+  Target,
+  Mail,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -27,6 +30,9 @@ const navigation = [
   { name: "Dotación", href: "/dotacion", icon: Shirt },
   { name: "Comités", href: "/comites", icon: UserCheck },
   { name: "Eventos y Firmas", href: "/eventos", icon: FileSignature },
+  { name: "Eval. Desempeño", href: "/evaluaciones-desempeno", icon: ClipboardCheck },
+  { name: "Eval. Competencias", href: "/evaluaciones-competencias", icon: Target },
+  { name: "Comunicaciones", href: "/comunicaciones", icon: Mail },
 ];
 
 const bottomNav = [
