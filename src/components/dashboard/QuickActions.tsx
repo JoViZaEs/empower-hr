@@ -1,26 +1,65 @@
-import { UserPlus, CalendarPlus, FileSignature, Shirt, Plus } from "lucide-react";
+import { 
+  UserPlus, 
+  CalendarPlus, 
+  FileSignature, 
+  Shirt, 
+  Plus,
+  GraduationCap,
+  ClipboardCheck,
+  Target,
+  Mail
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Link } from "react-router-dom";
 
 const actions = [
   {
     label: "Nuevo Empleado",
     icon: UserPlus,
     color: "bg-primary hover:bg-primary/90 text-primary-foreground",
+    href: "/empleados",
   },
   {
     label: "Programar Examen",
     icon: CalendarPlus,
     color: "bg-success hover:bg-success/90 text-success-foreground",
+    href: "/examenes",
+  },
+  {
+    label: "Registrar Curso",
+    icon: GraduationCap,
+    color: "bg-info hover:bg-info/90 text-info-foreground",
+    href: "/cursos",
   },
   {
     label: "Crear Evento",
     icon: FileSignature,
-    color: "bg-info hover:bg-info/90 text-info-foreground",
+    color: "bg-secondary hover:bg-secondary/90 text-secondary-foreground",
+    href: "/eventos",
   },
   {
     label: "Registrar Dotación",
     icon: Shirt,
     color: "bg-warning hover:bg-warning/90 text-warning-foreground",
+    href: "/dotacion",
+  },
+  {
+    label: "Nueva Evaluación",
+    icon: ClipboardCheck,
+    color: "bg-purple-600 hover:bg-purple-700 text-white",
+    href: "/evaluaciones-desempeno",
+  },
+  {
+    label: "Eval. Competencias",
+    icon: Target,
+    color: "bg-cyan-600 hover:bg-cyan-700 text-white",
+    href: "/evaluaciones-competencias",
+  },
+  {
+    label: "Enviar Comunicado",
+    icon: Mail,
+    color: "bg-rose-600 hover:bg-rose-700 text-white",
+    href: "/comunicaciones",
   },
 ];
 
@@ -33,21 +72,16 @@ export function QuickActions() {
         {actions.map((action) => (
           <Button
             key={action.label}
-            className={`h-auto flex-col gap-2 py-4 ${action.color}`}
+            className={`h-auto flex-col gap-2 py-3 ${action.color}`}
+            asChild
           >
-            <action.icon className="h-6 w-6" />
-            <span className="text-xs font-medium">{action.label}</span>
+            <Link to={action.href}>
+              <action.icon className="h-5 w-5" />
+              <span className="text-xs font-medium text-center leading-tight">{action.label}</span>
+            </Link>
           </Button>
         ))}
       </div>
-      
-      <Button
-        variant="outline"
-        className="mt-4 w-full"
-      >
-        <Plus className="mr-2 h-4 w-4" />
-        Ver todas las acciones
-      </Button>
     </div>
   );
 }
