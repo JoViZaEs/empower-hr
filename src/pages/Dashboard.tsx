@@ -4,7 +4,16 @@ import { AlertList } from "@/components/dashboard/AlertList";
 import { QuickActions } from "@/components/dashboard/QuickActions";
 import { UpcomingDeadlines } from "@/components/dashboard/UpcomingDeadlines";
 import { ComplianceChart } from "@/components/dashboard/ComplianceChart";
-import { Users, Stethoscope, ShieldCheck, FileSignature } from "lucide-react";
+import { 
+  Users, 
+  Stethoscope, 
+  ShieldCheck, 
+  FileSignature, 
+  GraduationCap, 
+  ClipboardCheck,
+  Target,
+  Mail
+} from "lucide-react";
 
 export default function Dashboard() {
   return (
@@ -18,8 +27,8 @@ export default function Dashboard() {
           </p>
         </div>
 
-        {/* Stats grid */}
-        <div className="mb-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        {/* Stats grid - Row 1 */}
+        <div className="mb-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard
             title="Empleados Activos"
             value={156}
@@ -35,18 +44,48 @@ export default function Dashboard() {
             variant="success"
           />
           <StatCard
+            title="Cursos Vigentes"
+            value="87%"
+            subtitle="8 por renovar"
+            icon={GraduationCap}
+            variant="success"
+          />
+          <StatCard
             title="Alertas Pendientes"
-            value={4}
-            subtitle="2 urgentes"
+            value={7}
+            subtitle="3 urgentes"
             icon={ShieldCheck}
             variant="warning"
           />
+        </div>
+
+        {/* Stats grid - Row 2 */}
+        <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard
             title="Firmas Pendientes"
             value={8}
             subtitle="De reinducción SST"
             icon={FileSignature}
             variant="danger"
+          />
+          <StatCard
+            title="Eval. Desempeño"
+            value={4}
+            subtitle="En proceso este período"
+            icon={ClipboardCheck}
+          />
+          <StatCard
+            title="Brechas Competencias"
+            value={3}
+            subtitle="Requieren atención"
+            icon={Target}
+            variant="warning"
+          />
+          <StatCard
+            title="Comunicaciones"
+            value={12}
+            subtitle="Enviadas este mes"
+            icon={Mail}
           />
         </div>
 
