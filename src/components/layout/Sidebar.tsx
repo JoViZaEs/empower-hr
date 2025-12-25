@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
   LayoutDashboard,
@@ -20,6 +19,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { useSidebarState } from "./MainLayout";
 
 const navigation = [
   { name: "Panel Principal", href: "/", icon: LayoutDashboard },
@@ -40,7 +40,7 @@ const bottomNav = [
 ];
 
 export function Sidebar() {
-  const [collapsed, setCollapsed] = useState(false);
+  const { collapsed, setCollapsed } = useSidebarState();
   const location = useLocation();
 
   return (
