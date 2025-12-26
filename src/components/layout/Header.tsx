@@ -1,4 +1,4 @@
-import { Bell, Search, User } from "lucide-react";
+import { Bell, Search, User, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -10,8 +10,23 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
+import { useAuth } from "@/hooks/useAuth";
+import { useNavigate } from "react-router-dom";
 
 export function Header() {
+  const { user, signOut } = useAuth();
+  const navigate = useNavigate();
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate("/auth");
+  };
+
+  // Get display name from user metadata or email
+  const displayName = user?.user_metadata?.first_name 
+    ? `${user.user_metadata.first_name} ${user.user_metadata.last_name || ""}`
+    : user?.email?.split("@")[0] || "Usuario";
+
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border bg-card/80 px-6 backdrop-blur-sm">
       <div className="flex items-center gap-4">
@@ -67,18 +82,26 @@ export function Header() {
                 <User className="h-4 w-4" />
               </div>
               <div className="hidden text-left md:block">
-                <p className="text-sm font-medium">Admin</p>
-                <p className="text-xs text-muted-foreground">Empresa Demo</p>
+                <p className="text-sm font-medium">{displayName}</p>
+                <p className="text-xs text-muted-foreground">{user?.email}</p>
               </div>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuLabel>Mi Cuenta</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>Perfil</DropdownMenuItem>
-            <DropdownMenuItem>Configuración</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => navigate("/configuracion")}>
+              Perfil
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => navigate("/configuracion")}>
+              Configuración
+            </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem className="text-destructive">
+            <DropdownMenuItem 
+              className="text-destructive focus:text-destructive"
+              onClick={handleSignOut}
+            >
+              <LogOut className="mr-2 h-4 w-4" />
               Cerrar Sesión
             </DropdownMenuItem>
           </DropdownMenuContent>
