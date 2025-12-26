@@ -3,6 +3,8 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { AuthProvider } from "@/hooks/useAuth";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
 import Dashboard from "./pages/Dashboard";
 import Empleados from "./pages/Empleados";
 import Vigilancias from "./pages/Vigilancias";
@@ -15,33 +17,37 @@ import EvaluacionesDesempeno from "./pages/EvaluacionesDesempeno";
 import EvaluacionesCompetencias from "./pages/EvaluacionesCompetencias";
 import Comunicaciones from "./pages/Comunicaciones";
 import Configuracion from "./pages/Configuracion";
+import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/empleados" element={<Empleados />} />
-          <Route path="/vigilancias" element={<Vigilancias />} />
-          <Route path="/examenes" element={<Examenes />} />
-          <Route path="/cursos" element={<Cursos />} />
-          <Route path="/dotacion" element={<Dotacion />} />
-          <Route path="/comites" element={<Comites />} />
-          <Route path="/eventos" element={<Eventos />} />
-          <Route path="/evaluaciones-desempeno" element={<EvaluacionesDesempeno />} />
-          <Route path="/evaluaciones-competencias" element={<EvaluacionesCompetencias />} />
-          <Route path="/comunicaciones" element={<Comunicaciones />} />
-          <Route path="/configuracion" element={<Configuracion />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
-    </TooltipProvider>
+    <AuthProvider>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <Routes>
+            <Route path="/auth" element={<Auth />} />
+            <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+            <Route path="/empleados" element={<ProtectedRoute><Empleados /></ProtectedRoute>} />
+            <Route path="/vigilancias" element={<ProtectedRoute><Vigilancias /></ProtectedRoute>} />
+            <Route path="/examenes" element={<ProtectedRoute><Examenes /></ProtectedRoute>} />
+            <Route path="/cursos" element={<ProtectedRoute><Cursos /></ProtectedRoute>} />
+            <Route path="/dotacion" element={<ProtectedRoute><Dotacion /></ProtectedRoute>} />
+            <Route path="/comites" element={<ProtectedRoute><Comites /></ProtectedRoute>} />
+            <Route path="/eventos" element={<ProtectedRoute><Eventos /></ProtectedRoute>} />
+            <Route path="/evaluaciones-desempeno" element={<ProtectedRoute><EvaluacionesDesempeno /></ProtectedRoute>} />
+            <Route path="/evaluaciones-competencias" element={<ProtectedRoute><EvaluacionesCompetencias /></ProtectedRoute>} />
+            <Route path="/comunicaciones" element={<ProtectedRoute><Comunicaciones /></ProtectedRoute>} />
+            <Route path="/configuracion" element={<ProtectedRoute><Configuracion /></ProtectedRoute>} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
+      </TooltipProvider>
+    </AuthProvider>
   </QueryClientProvider>
 );
 
