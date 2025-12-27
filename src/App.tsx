@@ -17,6 +17,7 @@ import EvaluacionesDesempeno from "./pages/EvaluacionesDesempeno";
 import EvaluacionesCompetencias from "./pages/EvaluacionesCompetencias";
 import Comunicaciones from "./pages/Comunicaciones";
 import Configuracion from "./pages/Configuracion";
+import RolesPermisos from "./pages/RolesPermisos";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
@@ -43,6 +44,7 @@ const App = () => (
             <Route path="/evaluaciones-competencias" element={<ProtectedRoute><EvaluacionesCompetencias /></ProtectedRoute>} />
             <Route path="/comunicaciones" element={<ProtectedRoute><Comunicaciones /></ProtectedRoute>} />
             <Route path="/configuracion" element={<ProtectedRoute><Configuracion /></ProtectedRoute>} />
+            <Route path="/roles-permisos" element={<ProtectedRoute><RolesPermisos /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
