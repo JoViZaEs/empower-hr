@@ -16,6 +16,7 @@ import {
   ClipboardCheck,
   Target,
   Mail,
+  KeyRound,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -36,6 +37,7 @@ const navigation = [
 ];
 
 const bottomNav = [
+  { name: "Roles y Permisos", href: "/roles-permisos", icon: KeyRound },
   { name: "Configuración", href: "/configuracion", icon: Settings },
 ];
 
