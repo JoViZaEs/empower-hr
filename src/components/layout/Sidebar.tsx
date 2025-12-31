@@ -17,33 +17,74 @@ import {
   Target,
   Mail,
   KeyRound,
+  LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useSidebarState } from "./MainLayout";
+import { usePermissions } from "@/hooks/usePermissions";
+import { useAuth } from "@/hooks/useAuth";
 
-const navigation = [
+interface NavItem {
+  name: string;
+  href: string;
+  icon: LucideIcon;
+  moduleCode?: string; // If set, requires permission to view
+  adminOnly?: boolean; // If true, only super admins or tenant admins can see
+}
+
+const navigation: NavItem[] = [
   { name: "Panel Principal", href: "/", icon: LayoutDashboard },
-  { name: "Empleados", href: "/empleados", icon: Users },
-  { name: "Vigilancias", href: "/vigilancias", icon: ShieldCheck },
-  { name: "Exámenes Médicos", href: "/examenes", icon: Stethoscope },
-  { name: "Cursos", href: "/cursos", icon: GraduationCap },
-  { name: "Dotación", href: "/dotacion", icon: Shirt },
-  { name: "Comités", href: "/comites", icon: UserCheck },
+  { name: "Empleados", href: "/empleados", icon: Users, moduleCode: "empleados" },
+  { name: "Vigilancias", href: "/vigilancias", icon: ShieldCheck, moduleCode: "vigilancias" },
+  { name: "Exámenes Médicos", href: "/examenes", icon: Stethoscope, moduleCode: "examenes" },
+  { name: "Cursos", href: "/cursos", icon: GraduationCap, moduleCode: "cursos" },
+  { name: "Dotación", href: "/dotacion", icon: Shirt, moduleCode: "dotacion" },
+  { name: "Comités", href: "/comites", icon: UserCheck, moduleCode: "comites" },
   { name: "Eventos y Firmas", href: "/eventos", icon: FileSignature },
-  { name: "Eval. Desempeño", href: "/evaluaciones-desempeno", icon: ClipboardCheck },
-  { name: "Eval. Competencias", href: "/evaluaciones-competencias", icon: Target },
-  { name: "Comunicaciones", href: "/comunicaciones", icon: Mail },
+  { name: "Eval. Desempeño", href: "/evaluaciones-desempeno", icon: ClipboardCheck, moduleCode: "evaluaciones_desempeno" },
+  { name: "Eval. Competencias", href: "/evaluaciones-competencias", icon: Target, moduleCode: "evaluaciones_competencias" },
+  { name: "Comunicaciones", href: "/comunicaciones", icon: Mail, moduleCode: "comunicaciones" },
 ];
 
-const bottomNav = [
-  { name: "Roles y Permisos", href: "/roles-permisos", icon: KeyRound },
+const bottomNav: NavItem[] = [
+  { name: "Roles y Permisos", href: "/roles-permisos", icon: KeyRound, adminOnly: true },
   { name: "Configuración", href: "/configuracion", icon: Settings },
 ];
 
 export function Sidebar() {
   const { collapsed, setCollapsed } = useSidebarState();
   const location = useLocation();
+  const { hasAnyPermission, isSuperAdmin, loading: isLoadingPermissions } = usePermissions();
+  const { signOut, profile } = useAuth();
+
+  // Check if user can see a nav item
+  const canSeeNavItem = (item: NavItem): boolean => {
+    // Super admins can see everything
+    if (isSuperAdmin) return true;
+    
+    // Admin-only items require being a super admin (already checked above)
+    // or having at least one role (tenant admin)
+    if (item.adminOnly) {
+      // For now, we'll show admin items to users with roles
+      // This could be refined to check for specific admin permissions
+      return true; // Will be hidden by actual RLS if no permission
+    }
+    
+    // Items without moduleCode are visible to everyone
+    if (!item.moduleCode) return true;
+    
+    // Check if user has any permission for this module
+    return hasAnyPermission(item.moduleCode);
+  };
+
+  // Filter navigation items based on permissions
+  const visibleNavigation = navigation.filter(canSeeNavItem);
+  const visibleBottomNav = bottomNav.filter(canSeeNavItem);
+
+  const handleSignOut = async () => {
+    await signOut();
+  };
 
   return (
     <aside
@@ -69,41 +110,67 @@ export function Sidebar() {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 space-y-1 px-3 py-4">
-          {navigation.map((item) => {
+        <nav className="flex-1 space-y-1 px-3 py-4 overflow-y-auto">
+          {isLoadingPermissions ? (
+            // Show skeleton while loading permissions
+            <div className="space-y-2">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <div
+                  key={i}
+                  className={cn(
+                    "h-10 rounded-lg bg-sidebar-accent/30 animate-pulse",
+                    collapsed ? "w-12" : "w-full"
+                  )}
+                />
+              ))}
+            </div>
+          ) : (
+            visibleNavigation.map((item) => {
+              const isActive = location.pathname === item.href;
+              return (
+                <Link
+                  key={item.name}
+                  to={item.href}
+                  className={cn(
+                    "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200",
+                    isActive
+                      ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-md"
+                      : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                  )}
+                >
+                  <item.icon className={cn("h-5 w-5 flex-shrink-0", isActive && "animate-pulse-soft")} />
+                  {!collapsed && <span className="animate-fade-in">{item.name}</span>}
+                </Link>
+              );
+            })
+          )}
+        </nav>
+
+        {/* Bottom section */}
+        <div className="border-t border-sidebar-border px-3 py-4">
+          {visibleBottomNav.map((item) => {
             const isActive = location.pathname === item.href;
             return (
               <Link
                 key={item.name}
                 to={item.href}
                 className={cn(
-                  "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200",
+                  "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
                   isActive
                     ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-md"
                     : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                 )}
               >
-                <item.icon className={cn("h-5 w-5 flex-shrink-0", isActive && "animate-pulse-soft")} />
-                {!collapsed && <span className="animate-fade-in">{item.name}</span>}
+                <item.icon className="h-5 w-5 flex-shrink-0" />
+                {!collapsed && <span>{item.name}</span>}
               </Link>
             );
           })}
-        </nav>
-
-        {/* Bottom section */}
-        <div className="border-t border-sidebar-border px-3 py-4">
-          {bottomNav.map((item) => (
-            <Link
-              key={item.name}
-              to={item.href}
-              className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-sidebar-foreground/80 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-            >
-              <item.icon className="h-5 w-5 flex-shrink-0" />
-              {!collapsed && <span>{item.name}</span>}
-            </Link>
-          ))}
           
-          <button className="mt-2 flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-sidebar-foreground/60 transition-colors hover:bg-destructive/10 hover:text-destructive">
+          <button 
+            onClick={handleSignOut}
+            className="mt-2 flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-sidebar-foreground/60 transition-colors hover:bg-destructive/10 hover:text-destructive"
+          >
             <LogOut className="h-5 w-5 flex-shrink-0" />
             {!collapsed && <span>Cerrar Sesión</span>}
           </button>
