@@ -86,6 +86,17 @@ export default function RolesPermisos() {
     },
   });
 
+  const { data: userPermissions = [] } = useQuery({
+    queryKey: ["user_permissions"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("user_permissions")
+        .select("*");
+      if (error) throw error;
+      return data;
+    },
+  });
+
   const { data: users = [], isLoading: usersLoading } = useQuery({
     queryKey: ["tenant_users"],
     queryFn: async () => {
@@ -243,6 +254,53 @@ export default function RolesPermisos() {
     },
   });
 
+  const toggleUserPermissionMutation = useMutation({
+    mutationFn: async ({ 
+      userId, 
+      permissionId, 
+      currentState 
+    }: { 
+      userId: string; 
+      permissionId: string; 
+      currentState: "granted" | "revoked" | "inherited" | "none";
+    }) => {
+      // Logic for state transitions:
+      // none -> granted (add user_permission with granted=true)
+      // inherited -> revoked (add user_permission with granted=false)
+      // granted -> none (remove user_permission)
+      // revoked -> inherited (remove user_permission)
+      
+      if (currentState === "none") {
+        // Add permission
+        const { error } = await supabase
+          .from("user_permissions")
+          .insert({ user_id: userId, permission_id: permissionId, granted: true });
+        if (error) throw error;
+      } else if (currentState === "inherited") {
+        // Revoke permission
+        const { error } = await supabase
+          .from("user_permissions")
+          .insert({ user_id: userId, permission_id: permissionId, granted: false });
+        if (error) throw error;
+      } else if (currentState === "granted" || currentState === "revoked") {
+        // Remove individual permission
+        const { error } = await supabase
+          .from("user_permissions")
+          .delete()
+          .eq("user_id", userId)
+          .eq("permission_id", permissionId);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["user_permissions"] });
+      toast.success("Permiso de usuario actualizado");
+    },
+    onError: (error) => {
+      toast.error("Error al actualizar permiso: " + error.message);
+    },
+  });
+
   const handleCreateRole = (data: { name: string; description: string }) => {
     createRoleMutation.mutate(data);
   };
@@ -266,6 +324,14 @@ export default function RolesPermisos() {
 
   const handleTogglePermission = (roleId: string, permissionId: string, currentlyGranted: boolean) => {
     togglePermissionMutation.mutate({ roleId, permissionId, granted: !currentlyGranted });
+  };
+
+  const handleToggleUserPermission = (
+    userId: string, 
+    permissionId: string, 
+    currentState: "granted" | "revoked" | "inherited" | "none"
+  ) => {
+    toggleUserPermissionMutation.mutate({ userId, permissionId, currentState });
   };
 
   const handleCloseDialog = () => {
@@ -368,15 +434,20 @@ export default function RolesPermisos() {
 
         {/* User Roles Dialog */}
         <Dialog open={isUserRolesDialogOpen} onOpenChange={handleCloseUserRolesDialog}>
-          <DialogContent className="sm:max-w-md">
+          <DialogContent className="sm:max-w-2xl">
             <DialogHeader>
-              <DialogTitle>Gestionar Roles de Usuario</DialogTitle>
+              <DialogTitle>Gestionar Roles y Permisos de Usuario</DialogTitle>
             </DialogHeader>
             {selectedUser && (
               <UserRolesForm
                 user={selectedUser}
                 roles={roles}
+                modules={modules}
+                permissions={permissions}
+                rolePermissions={rolePermissions}
+                userPermissions={userPermissions}
                 onSubmit={handleUpdateUserRoles}
+                onToggleUserPermission={handleToggleUserPermission}
                 onCancel={handleCloseUserRolesDialog}
                 isLoading={updateUserRolesMutation.isPending}
               />
