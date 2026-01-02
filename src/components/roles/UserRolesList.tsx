@@ -130,12 +130,15 @@ export function UserRolesList({
                   Super Admin
                 </Badge>
               )}
-              {user.user_roles?.length > 0 ? (
-                user.user_roles.map((ur) => (
-                  <Badge key={ur.role_id} variant="secondary">
-                    {ur.roles?.name}
-                  </Badge>
-                ))
+              {/* Filter out system roles (Administrador) when user is super admin to avoid redundant badges */}
+              {user.user_roles?.filter(ur => !(user.is_super_admin && ur.roles?.is_system)).length > 0 ? (
+                user.user_roles
+                  .filter(ur => !(user.is_super_admin && ur.roles?.is_system))
+                  .map((ur) => (
+                    <Badge key={ur.role_id} variant="secondary">
+                      {ur.roles?.name}
+                    </Badge>
+                  ))
               ) : (
                 !user.is_super_admin && (
                   <Badge variant="outline" className="text-muted-foreground">
