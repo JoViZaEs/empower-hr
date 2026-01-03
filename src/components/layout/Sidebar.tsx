@@ -16,7 +16,7 @@ import {
   ClipboardCheck,
   Target,
   Mail,
-  KeyRound,
+  
   LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -48,7 +48,6 @@ const navigation: NavItem[] = [
 ];
 
 const bottomNav: NavItem[] = [
-  { name: "Roles y Permisos", href: "/roles-permisos", icon: KeyRound, adminOnly: true },
   { name: "Configuración", href: "/configuracion", icon: Settings },
 ];
 

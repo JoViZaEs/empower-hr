@@ -5,11 +5,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
+import { SecuritySettings } from "@/components/settings/SecuritySettings";
 import {
   Building2,
   Users,
   Bell,
-  Palette,
   Shield,
   Mail,
   Save,
@@ -174,19 +174,7 @@ export default function Configuracion() {
           </TabsContent>
 
           <TabsContent value="seguridad">
-            <Card>
-              <CardHeader>
-                <CardTitle>Seguridad y Permisos</CardTitle>
-                <CardDescription>
-                  Configura roles y permisos del sistema
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground">
-                  Configuración de roles y permisos próximamente...
-                </p>
-              </CardContent>
-            </Card>
+            <SecuritySettings />
           </TabsContent>
         </Tabs>
       </div>
