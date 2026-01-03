@@ -1,11 +1,10 @@
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { SecuritySettings } from "@/components/settings/SecuritySettings";
+import { CompanySettings } from "@/components/settings/CompanySettings";
 import {
   Building2,
   Users,
@@ -52,38 +51,7 @@ export default function Configuracion() {
           </TabsList>
 
           <TabsContent value="empresa">
-            <Card>
-              <CardHeader>
-                <CardTitle>Información de la Empresa</CardTitle>
-                <CardDescription>
-                  Datos generales de tu organización
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="company-name">Nombre de la empresa</Label>
-                    <Input id="company-name" defaultValue="Empresa Demo S.A.S" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="nit">NIT</Label>
-                    <Input id="nit" defaultValue="900.123.456-7" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="address">Dirección</Label>
-                    <Input id="address" defaultValue="Calle 100 #15-20, Bogotá" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="phone">Teléfono</Label>
-                    <Input id="phone" defaultValue="+57 1 234 5678" />
-                  </div>
-                </div>
-                <Button className="gradient-primary">
-                  <Save className="mr-2 h-4 w-4" />
-                  Guardar cambios
-                </Button>
-              </CardContent>
-            </Card>
+            <CompanySettings />
           </TabsContent>
 
           <TabsContent value="usuarios">
