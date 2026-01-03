@@ -1,19 +1,4 @@
 import { useState } from "react";
-import { MainLayout } from "@/components/layout/MainLayout";
-import { RolesList } from "@/components/roles/RolesList";
-import { RoleForm } from "@/components/roles/RoleForm";
-import { PermissionsMatrix } from "@/components/roles/PermissionsMatrix";
-import { UserRolesList } from "@/components/roles/UserRolesList";
-import { UserRolesForm } from "@/components/roles/UserRolesForm";
-import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Shield, Users2, UserCog } from "lucide-react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -23,14 +8,14 @@ import type { Tables } from "@/integrations/supabase/types";
 type Role = Tables<"roles">;
 type Profile = Tables<"profiles">;
 
-interface UserWithRoles extends Profile {
+export interface UserWithRoles extends Profile {
   user_roles: {
     role_id: string;
     roles: Role;
   }[];
 }
 
-export default function RolesPermisos() {
+export function useRolesPermissions() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isUserRolesDialogOpen, setIsUserRolesDialogOpen] = useState(false);
   const [selectedRole, setSelectedRole] = useState<Role | null>(null);
@@ -100,7 +85,6 @@ export default function RolesPermisos() {
   const { data: users = [], isLoading: usersLoading } = useQuery({
     queryKey: ["tenant_users"],
     queryFn: async () => {
-      // First get all profiles in the tenant
       const { data: profiles, error: profilesError } = await supabase
         .from("profiles")
         .select("*")
@@ -108,7 +92,6 @@ export default function RolesPermisos() {
       
       if (profilesError) throw profilesError;
 
-      // Then get all user_roles with their roles
       const { data: userRolesData, error: rolesError } = await supabase
         .from("user_roles")
         .select(`
@@ -119,7 +102,6 @@ export default function RolesPermisos() {
       
       if (rolesError) throw rolesError;
 
-      // Combine the data
       const usersWithRoles = profiles.map((profile) => ({
         ...profile,
         user_roles: userRolesData
@@ -226,7 +208,6 @@ export default function RolesPermisos() {
 
   const updateUserRolesMutation = useMutation({
     mutationFn: async ({ userId, roleIds }: { userId: string; roleIds: string[] }) => {
-      // First, delete all existing user roles
       const { error: deleteError } = await supabase
         .from("user_roles")
         .delete()
@@ -234,7 +215,6 @@ export default function RolesPermisos() {
       
       if (deleteError) throw deleteError;
 
-      // Then, insert new roles if any
       if (roleIds.length > 0) {
         const { error: insertError } = await supabase
           .from("user_roles")
@@ -264,26 +244,17 @@ export default function RolesPermisos() {
       permissionId: string; 
       currentState: "granted" | "revoked" | "inherited" | "none";
     }) => {
-      // Logic for state transitions:
-      // none -> granted (add user_permission with granted=true)
-      // inherited -> revoked (add user_permission with granted=false)
-      // granted -> none (remove user_permission)
-      // revoked -> inherited (remove user_permission)
-      
       if (currentState === "none") {
-        // Add permission
         const { error } = await supabase
           .from("user_permissions")
           .insert({ user_id: userId, permission_id: permissionId, granted: true });
         if (error) throw error;
       } else if (currentState === "inherited") {
-        // Revoke permission
         const { error } = await supabase
           .from("user_permissions")
           .insert({ user_id: userId, permission_id: permissionId, granted: false });
         if (error) throw error;
       } else if (currentState === "granted" || currentState === "revoked") {
-        // Remove individual permission
         const { error } = await supabase
           .from("user_permissions")
           .delete()
@@ -353,108 +324,41 @@ export default function RolesPermisos() {
     setSelectedUser(null);
   };
 
-  return (
-    <MainLayout>
-      <div className="animate-fade-in">
-        <div className="mb-8 flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold">Roles y Permisos</h1>
-            <p className="mt-1 text-muted-foreground">
-              Gestiona los roles, permisos y asignaciones de usuarios
-            </p>
-          </div>
-          {activeTab === "roles" && (
-            <Button onClick={() => setIsDialogOpen(true)} className="gap-2">
-              <Plus className="h-4 w-4" />
-              Nuevo Rol
-            </Button>
-          )}
-        </div>
-
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full max-w-lg grid-cols-3">
-            <TabsTrigger value="roles" className="gap-2">
-              <Users2 className="h-4 w-4" />
-              Roles
-            </TabsTrigger>
-            <TabsTrigger value="users" className="gap-2">
-              <UserCog className="h-4 w-4" />
-              Usuarios
-            </TabsTrigger>
-            <TabsTrigger value="permissions" className="gap-2">
-              <Shield className="h-4 w-4" />
-              Permisos
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="roles" className="space-y-4">
-            <RolesList
-              roles={roles}
-              isLoading={rolesLoading}
-              onEdit={handleEditRole}
-              onDelete={handleDeleteRole}
-            />
-          </TabsContent>
-
-          <TabsContent value="users" className="space-y-4">
-            <UserRolesList
-              users={users}
-              isLoading={usersLoading}
-              onManageRoles={handleManageUserRoles}
-            />
-          </TabsContent>
-
-          <TabsContent value="permissions">
-            <PermissionsMatrix
-              roles={roles}
-              modules={modules}
-              permissions={permissions}
-              rolePermissions={rolePermissions}
-              onTogglePermission={handleTogglePermission}
-            />
-          </TabsContent>
-        </Tabs>
-
-        {/* Role Dialog */}
-        <Dialog open={isDialogOpen} onOpenChange={handleCloseDialog}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>
-                {selectedRole ? "Editar Rol" : "Crear Nuevo Rol"}
-              </DialogTitle>
-            </DialogHeader>
-            <RoleForm
-              role={selectedRole}
-              onSubmit={selectedRole ? handleUpdateRole : handleCreateRole}
-              onCancel={handleCloseDialog}
-              isLoading={createRoleMutation.isPending || updateRoleMutation.isPending}
-            />
-          </DialogContent>
-        </Dialog>
-
-        {/* User Roles Dialog */}
-        <Dialog open={isUserRolesDialogOpen} onOpenChange={handleCloseUserRolesDialog}>
-          <DialogContent className="sm:max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>Gestionar Roles y Permisos de Usuario</DialogTitle>
-            </DialogHeader>
-            {selectedUser && (
-              <UserRolesForm
-                user={selectedUser}
-                roles={roles}
-                modules={modules}
-                permissions={permissions}
-                rolePermissions={rolePermissions}
-                userPermissions={userPermissions}
-                onSubmit={handleUpdateUserRoles}
-                onToggleUserPermission={handleToggleUserPermission}
-                onCancel={handleCloseUserRolesDialog}
-                isLoading={updateUserRolesMutation.isPending}
-              />
-            )}
-          </DialogContent>
-        </Dialog>
-      </div>
-    </MainLayout>
-  );
+  return {
+    // State
+    isDialogOpen,
+    setIsDialogOpen,
+    isUserRolesDialogOpen,
+    selectedRole,
+    selectedUser,
+    activeTab,
+    setActiveTab,
+    
+    // Data
+    roles,
+    rolesLoading,
+    modules,
+    permissions,
+    rolePermissions,
+    userPermissions,
+    users,
+    usersLoading,
+    
+    // Mutations loading states
+    isCreating: createRoleMutation.isPending,
+    isUpdating: updateRoleMutation.isPending,
+    isUpdatingUserRoles: updateUserRolesMutation.isPending,
+    
+    // Handlers
+    handleCreateRole,
+    handleUpdateRole,
+    handleEditRole,
+    handleDeleteRole,
+    handleTogglePermission,
+    handleToggleUserPermission,
+    handleCloseDialog,
+    handleManageUserRoles,
+    handleUpdateUserRoles,
+    handleCloseUserRolesDialog,
+  };
 }
