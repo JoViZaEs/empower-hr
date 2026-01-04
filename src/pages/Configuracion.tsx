@@ -1,10 +1,10 @@
 import { MainLayout } from "@/components/layout/MainLayout";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SecuritySettings } from "@/components/settings/SecuritySettings";
 import { CompanySettings } from "@/components/settings/CompanySettings";
 import { UserManagementSettings } from "@/components/settings/UserManagementSettings";
 import { AlertSettings } from "@/components/settings/AlertSettings";
+import { EmailTemplatesSettings } from "@/components/settings/EmailTemplatesSettings";
 import {
   Building2,
   Users,
@@ -62,19 +62,7 @@ export default function Configuracion() {
           </TabsContent>
 
           <TabsContent value="correos">
-            <Card>
-              <CardHeader>
-                <CardTitle>Plantillas de Correo</CardTitle>
-                <CardDescription>
-                  Personaliza los correos automáticos del sistema
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground">
-                  Editor de plantillas de correo próximamente...
-                </p>
-              </CardContent>
-            </Card>
+            <EmailTemplatesSettings />
           </TabsContent>
 
           <TabsContent value="seguridad">
