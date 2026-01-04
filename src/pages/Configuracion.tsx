@@ -1,18 +1,16 @@
 import { MainLayout } from "@/components/layout/MainLayout";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Switch } from "@/components/ui/switch";
 import { SecuritySettings } from "@/components/settings/SecuritySettings";
 import { CompanySettings } from "@/components/settings/CompanySettings";
 import { UserManagementSettings } from "@/components/settings/UserManagementSettings";
+import { AlertSettings } from "@/components/settings/AlertSettings";
 import {
   Building2,
   Users,
   Bell,
   Shield,
   Mail,
-  Save,
 } from "lucide-react";
 
 export default function Configuracion() {
@@ -60,58 +58,7 @@ export default function Configuracion() {
           </TabsContent>
 
           <TabsContent value="notificaciones">
-            <Card>
-              <CardHeader>
-                <CardTitle>Configuración de Alertas</CardTitle>
-                <CardDescription>
-                  Define cuándo y cómo recibir notificaciones
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between rounded-lg border border-border p-4">
-                    <div>
-                      <p className="font-medium">Exámenes por vencer</p>
-                      <p className="text-sm text-muted-foreground">
-                        Notificar cuando falten 30 días para vencimiento
-                      </p>
-                    </div>
-                    <Switch defaultChecked />
-                  </div>
-                  <div className="flex items-center justify-between rounded-lg border border-border p-4">
-                    <div>
-                      <p className="font-medium">Firmas pendientes</p>
-                      <p className="text-sm text-muted-foreground">
-                        Recordar firmas pendientes cada 7 días
-                      </p>
-                    </div>
-                    <Switch defaultChecked />
-                  </div>
-                  <div className="flex items-center justify-between rounded-lg border border-border p-4">
-                    <div>
-                      <p className="font-medium">Vencimiento de comités</p>
-                      <p className="text-sm text-muted-foreground">
-                        Alertar 60 días antes del vencimiento
-                      </p>
-                    </div>
-                    <Switch defaultChecked />
-                  </div>
-                  <div className="flex items-center justify-between rounded-lg border border-border p-4">
-                    <div>
-                      <p className="font-medium">Entregas de dotación</p>
-                      <p className="text-sm text-muted-foreground">
-                        Recordar entregas programadas
-                      </p>
-                    </div>
-                    <Switch />
-                  </div>
-                </div>
-                <Button className="gradient-primary">
-                  <Save className="mr-2 h-4 w-4" />
-                  Guardar preferencias
-                </Button>
-              </CardContent>
-            </Card>
+            <AlertSettings />
           </TabsContent>
 
           <TabsContent value="correos">
