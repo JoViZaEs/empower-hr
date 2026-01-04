@@ -5,6 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { SecuritySettings } from "@/components/settings/SecuritySettings";
 import { CompanySettings } from "@/components/settings/CompanySettings";
+import { UserManagementSettings } from "@/components/settings/UserManagementSettings";
 import {
   Building2,
   Users,
@@ -55,19 +56,7 @@ export default function Configuracion() {
           </TabsContent>
 
           <TabsContent value="usuarios">
-            <Card>
-              <CardHeader>
-                <CardTitle>Gestión de Usuarios</CardTitle>
-                <CardDescription>
-                  Administra los usuarios y permisos del sistema
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground">
-                  Funcionalidad de gestión de usuarios próximamente...
-                </p>
-              </CardContent>
-            </Card>
+            <UserManagementSettings />
           </TabsContent>
 
           <TabsContent value="notificaciones">
