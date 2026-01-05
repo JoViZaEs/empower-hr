@@ -5,12 +5,14 @@ import { CompanySettings } from "@/components/settings/CompanySettings";
 import { UserManagementSettings } from "@/components/settings/UserManagementSettings";
 import { AlertSettings } from "@/components/settings/AlertSettings";
 import { EmailTemplatesSettings } from "@/components/settings/EmailTemplatesSettings";
+import NotificationPreferencesSettings from "@/components/settings/NotificationPreferencesSettings";
 import {
   Building2,
   Users,
   Bell,
   Shield,
   Mail,
+  BellRing,
 } from "lucide-react";
 
 export default function Configuracion() {
@@ -26,7 +28,7 @@ export default function Configuracion() {
         </div>
 
         <Tabs defaultValue="empresa" className="space-y-6">
-          <TabsList className="grid w-full max-w-2xl grid-cols-5">
+          <TabsList className="grid w-full max-w-3xl grid-cols-6">
             <TabsTrigger value="empresa" className="flex items-center gap-2">
               <Building2 className="h-4 w-4" />
               <span className="hidden sm:inline">Empresa</span>
@@ -35,9 +37,13 @@ export default function Configuracion() {
               <Users className="h-4 w-4" />
               <span className="hidden sm:inline">Usuarios</span>
             </TabsTrigger>
-            <TabsTrigger value="notificaciones" className="flex items-center gap-2">
+            <TabsTrigger value="alertas" className="flex items-center gap-2">
               <Bell className="h-4 w-4" />
               <span className="hidden sm:inline">Alertas</span>
+            </TabsTrigger>
+            <TabsTrigger value="notificaciones" className="flex items-center gap-2">
+              <BellRing className="h-4 w-4" />
+              <span className="hidden sm:inline">Notificaciones</span>
             </TabsTrigger>
             <TabsTrigger value="correos" className="flex items-center gap-2">
               <Mail className="h-4 w-4" />
@@ -57,8 +63,12 @@ export default function Configuracion() {
             <UserManagementSettings />
           </TabsContent>
 
-          <TabsContent value="notificaciones">
+          <TabsContent value="alertas">
             <AlertSettings />
+          </TabsContent>
+
+          <TabsContent value="notificaciones">
+            <NotificationPreferencesSettings />
           </TabsContent>
 
           <TabsContent value="correos">
