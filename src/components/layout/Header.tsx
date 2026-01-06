@@ -66,7 +66,12 @@ export function Header() {
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-80">
             <div className="flex items-center justify-between px-2">
-              <DropdownMenuLabel className="py-2">Notificaciones</DropdownMenuLabel>
+              <DropdownMenuLabel 
+                className="py-2 cursor-pointer hover:text-primary transition-colors"
+                onClick={() => navigate("/notificaciones")}
+              >
+                Notificaciones
+              </DropdownMenuLabel>
               {unreadCount > 0 && (
                 <Button 
                   variant="ghost" 
