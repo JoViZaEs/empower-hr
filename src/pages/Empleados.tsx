@@ -17,14 +17,27 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useState } from "react";
+import { EmpleadoForm, EmployeeFormData } from "@/components/empleados/EmpleadoForm";
+import { useAuth } from "@/hooks/useAuth";
+import { toast } from "sonner";
 
 export default function Empleados() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const { profile } = useAuth();
   const [searchTerm, setSearchTerm] = useState("");
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [editingEmployee, setEditingEmployee] = useState<string | null>(null);
 
   const { data: employees, isLoading } = useQuery({
     queryKey: ["employees"],
@@ -39,6 +52,72 @@ export default function Empleados() {
     },
   });
 
+  const createMutation = useMutation({
+    mutationFn: async (data: EmployeeFormData) => {
+      if (!profile?.tenant_id) throw new Error("No tenant_id");
+      
+      const { error } = await supabase.from("employees").insert([{
+        document_type: data.document_type,
+        document_number: data.document_number,
+        first_name: data.first_name,
+        last_name: data.last_name,
+        active: data.active,
+        tenant_id: profile.tenant_id,
+        email: data.email || null,
+        phone: data.phone || null,
+        birth_date: data.birth_date || null,
+        hire_date: data.hire_date || null,
+        position: data.position || null,
+        department: data.department || null,
+        address: data.address || null,
+        city: data.city || null,
+        emergency_contact: data.emergency_contact || null,
+        emergency_phone: data.emergency_phone || null,
+      }]);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["employees"] });
+      setIsCreateOpen(false);
+      toast.success("Empleado creado exitosamente");
+    },
+    onError: (error: Error) => {
+      toast.error(`Error al crear empleado: ${error.message}`);
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: EmployeeFormData }) => {
+      const { error } = await supabase
+        .from("employees")
+        .update({
+          ...data,
+          email: data.email || null,
+          phone: data.phone || null,
+          birth_date: data.birth_date || null,
+          hire_date: data.hire_date || null,
+          position: data.position || null,
+          department: data.department || null,
+          address: data.address || null,
+          city: data.city || null,
+          emergency_contact: data.emergency_contact || null,
+          emergency_phone: data.emergency_phone || null,
+        })
+        .eq("id", id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["employees"] });
+      setEditingEmployee(null);
+      toast.success("Empleado actualizado exitosamente");
+    },
+    onError: (error: Error) => {
+      toast.error(`Error al actualizar empleado: ${error.message}`);
+    },
+  });
+
   const filteredEmployees = employees?.filter((emp) => {
     const fullName = `${emp.first_name} ${emp.last_name}`.toLowerCase();
     const term = searchTerm.toLowerCase();
@@ -49,6 +128,10 @@ export default function Empleados() {
       emp.department?.toLowerCase().includes(term)
     );
   });
+
+  const employeeBeingEdited = editingEmployee
+    ? employees?.find((e) => e.id === editingEmployee)
+    : null;
 
   return (
     <MainLayout>
@@ -61,7 +144,7 @@ export default function Empleados() {
               Gestiona la información de tus empleados
             </p>
           </div>
-          <Button className="gradient-primary">
+          <Button className="gradient-primary" onClick={() => setIsCreateOpen(true)}>
             <UserPlus className="mr-2 h-4 w-4" />
             Nuevo Empleado
           </Button>
@@ -144,7 +227,10 @@ export default function Empleados() {
                             }}>
                               Ver perfil
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={(e) => e.stopPropagation()}>
+                            <DropdownMenuItem onClick={(e) => {
+                              e.stopPropagation();
+                              setEditingEmployee(employee.id);
+                            }}>
                               Editar
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={(e) => e.stopPropagation()}>
@@ -173,6 +259,41 @@ export default function Empleados() {
           )}
         </div>
       </div>
+
+      {/* Dialog para crear empleado */}
+      <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Nuevo Empleado</DialogTitle>
+          </DialogHeader>
+          <EmpleadoForm
+            onSubmit={async (data) => {
+              await createMutation.mutateAsync(data);
+            }}
+            onCancel={() => setIsCreateOpen(false)}
+            isSubmitting={createMutation.isPending}
+          />
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog para editar empleado */}
+      <Dialog open={!!editingEmployee} onOpenChange={(open) => !open && setEditingEmployee(null)}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Editar Empleado</DialogTitle>
+          </DialogHeader>
+          {employeeBeingEdited && (
+            <EmpleadoForm
+              employee={employeeBeingEdited}
+              onSubmit={async (data) => {
+                await updateMutation.mutateAsync({ id: editingEmployee!, data });
+              }}
+              onCancel={() => setEditingEmployee(null)}
+              isSubmitting={updateMutation.isPending}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </MainLayout>
   );
 }
