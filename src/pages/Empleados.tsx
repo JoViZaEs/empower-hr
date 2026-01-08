@@ -67,8 +67,10 @@ export default function Empleados() {
         phone: data.phone || null,
         birth_date: data.birth_date || null,
         hire_date: data.hire_date || null,
+        termination_date: data.termination_date || null,
         position: data.position || null,
         department: data.department || null,
+        supervisor_id: data.supervisor_id || null,
         address: data.address || null,
         city: data.city || null,
         emergency_contact: data.emergency_contact || null,
@@ -79,6 +81,7 @@ export default function Empleados() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["employees"] });
+      queryClient.invalidateQueries({ queryKey: ["employees_for_supervisor"] });
       setIsCreateOpen(false);
       toast.success("Empleado creado exitosamente");
     },
@@ -92,13 +95,19 @@ export default function Empleados() {
       const { error } = await supabase
         .from("employees")
         .update({
-          ...data,
+          document_type: data.document_type,
+          document_number: data.document_number,
+          first_name: data.first_name,
+          last_name: data.last_name,
+          active: data.active,
           email: data.email || null,
           phone: data.phone || null,
           birth_date: data.birth_date || null,
           hire_date: data.hire_date || null,
+          termination_date: data.termination_date || null,
           position: data.position || null,
           department: data.department || null,
+          supervisor_id: data.supervisor_id || null,
           address: data.address || null,
           city: data.city || null,
           emergency_contact: data.emergency_contact || null,
@@ -110,6 +119,7 @@ export default function Empleados() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["employees"] });
+      queryClient.invalidateQueries({ queryKey: ["employees_for_supervisor"] });
       setEditingEmployee(null);
       toast.success("Empleado actualizado exitosamente");
     },
