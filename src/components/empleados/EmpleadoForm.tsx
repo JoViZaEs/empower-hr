@@ -381,14 +381,17 @@ export function EmpleadoForm({ employee, onSubmit, onCancel, isSubmitting }: Emp
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Jefe Directo</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value || ""}>
+                  <Select 
+                    onValueChange={(val) => field.onChange(val === "_none" ? "" : val)} 
+                    value={field.value || "_none"}
+                  >
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Seleccionar supervisor" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="">Sin jefe directo</SelectItem>
+                      <SelectItem value="_none">Sin jefe directo</SelectItem>
                       {availableSupervisors.map((emp) => (
                         <SelectItem key={emp.id} value={emp.id}>
                           {emp.first_name} {emp.last_name}
