@@ -2,6 +2,7 @@ import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Table,
   TableBody,
@@ -10,7 +11,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Search, UserPlus, Filter, MoreVertical, Loader2 } from "lucide-react";
+import { Search, UserPlus, Filter, MoreVertical, Loader2, List, Network } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -28,6 +29,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useState } from "react";
 import { EmpleadoForm, EmployeeFormData } from "@/components/empleados/EmpleadoForm";
+import { Organigrama } from "@/components/empleados/Organigrama";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 
@@ -38,6 +40,7 @@ export default function Empleados() {
   const [searchTerm, setSearchTerm] = useState("");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<string>("list");
 
   const { data: employees, isLoading } = useQuery({
     queryKey: ["employees"],
@@ -160,24 +163,39 @@ export default function Empleados() {
           </Button>
         </div>
 
-        {/* Filters */}
-        <div className="mb-6 flex flex-col gap-4 sm:flex-row">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input 
-              placeholder="Buscar por nombre, documento, cargo o área..." 
-              className="pl-10"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-          <Button variant="outline">
-            <Filter className="mr-2 h-4 w-4" />
-            Filtros
-          </Button>
-        </div>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <TabsList>
+              <TabsTrigger value="list" className="flex items-center gap-2">
+                <List className="h-4 w-4" />
+                Lista
+              </TabsTrigger>
+              <TabsTrigger value="organigrama" className="flex items-center gap-2">
+                <Network className="h-4 w-4" />
+                Organigrama
+              </TabsTrigger>
+            </TabsList>
 
-        {/* Table */}
+            {activeTab === "list" && (
+              <div className="flex flex-col gap-4 sm:flex-row flex-1 sm:max-w-xl">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input 
+                    placeholder="Buscar por nombre, documento, cargo o área..." 
+                    className="pl-10"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                </div>
+                <Button variant="outline">
+                  <Filter className="mr-2 h-4 w-4" />
+                  Filtros
+                </Button>
+              </div>
+            )}
+          </div>
+
+          <TabsContent value="list" className="mt-0">
         <div className="rounded-xl border border-border bg-card shadow-card overflow-hidden">
           {isLoading ? (
             <div className="flex items-center justify-center py-12">
@@ -268,6 +286,12 @@ export default function Empleados() {
             </Table>
           )}
         </div>
+          </TabsContent>
+
+          <TabsContent value="organigrama" className="mt-0">
+            <Organigrama />
+          </TabsContent>
+        </Tabs>
       </div>
 
       {/* Dialog para crear empleado */}
