@@ -1,6 +1,8 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -31,8 +33,10 @@ const employeeSchema = z.object({
   phone: z.string().max(20, "Máximo 20 caracteres").optional().or(z.literal("")),
   birth_date: z.string().optional().or(z.literal("")),
   hire_date: z.string().optional().or(z.literal("")),
+  termination_date: z.string().optional().or(z.literal("")),
   position: z.string().max(100, "Máximo 100 caracteres").optional().or(z.literal("")),
   department: z.string().max(100, "Máximo 100 caracteres").optional().or(z.literal("")),
+  supervisor_id: z.string().optional().or(z.literal("")),
   address: z.string().max(255, "Máximo 255 caracteres").optional().or(z.literal("")),
   city: z.string().max(100, "Máximo 100 caracteres").optional().or(z.literal("")),
   emergency_contact: z.string().max(100, "Máximo 100 caracteres").optional().or(z.literal("")),
@@ -43,17 +47,73 @@ const employeeSchema = z.object({
 export type EmployeeFormData = z.infer<typeof employeeSchema>;
 
 interface EmpleadoFormProps {
-  employee?: Tables<"employees"> | null;
+  employee?: (Tables<"employees"> & { supervisor_id?: string | null; termination_date?: string | null }) | null;
   onSubmit: (data: EmployeeFormData) => Promise<void>;
   onCancel: () => void;
   isSubmitting?: boolean;
 }
 
 export function EmpleadoForm({ employee, onSubmit, onCancel, isSubmitting }: EmpleadoFormProps) {
+  // Fetch document types
+  const { data: documentTypes } = useQuery({
+    queryKey: ["document_types"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("document_types")
+        .select("*")
+        .eq("active", true)
+        .order("name");
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // Fetch positions
+  const { data: positions } = useQuery({
+    queryKey: ["positions"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("positions")
+        .select("*")
+        .eq("active", true)
+        .order("name");
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // Fetch departments
+  const { data: departments } = useQuery({
+    queryKey: ["departments"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("departments")
+        .select("*")
+        .eq("active", true)
+        .order("name");
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // Fetch employees for supervisor selection
+  const { data: employees } = useQuery({
+    queryKey: ["employees_for_supervisor"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("employees")
+        .select("id, first_name, last_name")
+        .eq("active", true)
+        .order("first_name");
+      if (error) throw error;
+      return data;
+    },
+  });
+
   const form = useForm<EmployeeFormData>({
     resolver: zodResolver(employeeSchema),
     defaultValues: {
-      document_type: employee?.document_type || "CC",
+      document_type: employee?.document_type || "",
       document_number: employee?.document_number || "",
       first_name: employee?.first_name || "",
       last_name: employee?.last_name || "",
@@ -61,8 +121,10 @@ export function EmpleadoForm({ employee, onSubmit, onCancel, isSubmitting }: Emp
       phone: employee?.phone || "",
       birth_date: employee?.birth_date || "",
       hire_date: employee?.hire_date || "",
+      termination_date: employee?.termination_date || "",
       position: employee?.position || "",
       department: employee?.department || "",
+      supervisor_id: employee?.supervisor_id || "",
       address: employee?.address || "",
       city: employee?.city || "",
       emergency_contact: employee?.emergency_contact || "",
@@ -74,6 +136,9 @@ export function EmpleadoForm({ employee, onSubmit, onCancel, isSubmitting }: Emp
   const handleSubmit = form.handleSubmit(async (data) => {
     await onSubmit(data);
   });
+
+  // Filter out current employee from supervisor list
+  const availableSupervisors = employees?.filter(e => e.id !== employee?.id) || [];
 
   return (
     <Form {...form}>
@@ -90,18 +155,18 @@ export function EmpleadoForm({ employee, onSubmit, onCancel, isSubmitting }: Emp
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Tipo de documento *</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Seleccionar" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="CC">Cédula de Ciudadanía</SelectItem>
-                      <SelectItem value="CE">Cédula de Extranjería</SelectItem>
-                      <SelectItem value="TI">Tarjeta de Identidad</SelectItem>
-                      <SelectItem value="PA">Pasaporte</SelectItem>
-                      <SelectItem value="NIT">NIT</SelectItem>
+                      {documentTypes?.map((dt) => (
+                        <SelectItem key={dt.id} value={dt.code}>
+                          {dt.code} - {dt.name}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                   <FormMessage />
@@ -266,9 +331,20 @@ export function EmpleadoForm({ employee, onSubmit, onCancel, isSubmitting }: Emp
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Cargo</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Cargo del empleado" {...field} />
-                  </FormControl>
+                  <Select onValueChange={field.onChange} value={field.value || ""}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleccionar cargo" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {positions?.map((pos) => (
+                        <SelectItem key={pos.id} value={pos.name}>
+                          {pos.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )}
@@ -279,8 +355,59 @@ export function EmpleadoForm({ employee, onSubmit, onCancel, isSubmitting }: Emp
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Área / Departamento</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value || ""}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleccionar área" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {departments?.map((dept) => (
+                        <SelectItem key={dept.id} value={dept.name}>
+                          {dept.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <FormField
+              control={form.control}
+              name="supervisor_id"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Jefe Directo</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value || ""}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleccionar supervisor" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="">Sin jefe directo</SelectItem>
+                      {availableSupervisors.map((emp) => (
+                        <SelectItem key={emp.id} value={emp.id}>
+                          {emp.first_name} {emp.last_name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="hire_date"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Fecha de ingreso</FormLabel>
                   <FormControl>
-                    <Input placeholder="Área o departamento" {...field} />
+                    <Input type="date" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -289,10 +416,10 @@ export function EmpleadoForm({ employee, onSubmit, onCancel, isSubmitting }: Emp
           </div>
           <FormField
             control={form.control}
-            name="hire_date"
+            name="termination_date"
             render={({ field }) => (
               <FormItem className="sm:w-1/2">
-                <FormLabel>Fecha de ingreso</FormLabel>
+                <FormLabel>Fecha de retiro</FormLabel>
                 <FormControl>
                   <Input type="date" {...field} />
                 </FormControl>

@@ -433,6 +433,82 @@ export type Database = {
           },
         ]
       }
+      departments: {
+        Row: {
+          active: boolean | null
+          created_at: string | null
+          description: string | null
+          id: string
+          name: string
+          tenant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          active?: boolean | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name: string
+          tenant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          active?: boolean | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+          tenant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "departments_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      document_types: {
+        Row: {
+          active: boolean | null
+          code: string
+          created_at: string | null
+          id: string
+          name: string
+          tenant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          active?: boolean | null
+          code: string
+          created_at?: string | null
+          id?: string
+          name: string
+          tenant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          active?: boolean | null
+          code?: string
+          created_at?: string | null
+          id?: string
+          name?: string
+          tenant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_types_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       dotacion: {
         Row: {
           created_at: string | null
@@ -519,7 +595,9 @@ export type Database = {
           phone: string | null
           photo_url: string | null
           position: string | null
+          supervisor_id: string | null
           tenant_id: string
+          termination_date: string | null
           updated_at: string | null
         }
         Insert: {
@@ -541,7 +619,9 @@ export type Database = {
           phone?: string | null
           photo_url?: string | null
           position?: string | null
+          supervisor_id?: string | null
           tenant_id: string
+          termination_date?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -563,10 +643,19 @@ export type Database = {
           phone?: string | null
           photo_url?: string | null
           position?: string | null
+          supervisor_id?: string | null
           tenant_id?: string
+          termination_date?: string | null
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "employees_supervisor_id_fkey"
+            columns: ["supervisor_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "employees_tenant_id_fkey"
             columns: ["tenant_id"]
@@ -917,6 +1006,44 @@ export type Database = {
             columns: ["module_id"]
             isOneToOne: false
             referencedRelation: "modules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      positions: {
+        Row: {
+          active: boolean | null
+          created_at: string | null
+          description: string | null
+          id: string
+          name: string
+          tenant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          active?: boolean | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name: string
+          tenant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          active?: boolean | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+          tenant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "positions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
         ]
