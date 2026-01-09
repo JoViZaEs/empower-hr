@@ -11,7 +11,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Search, UserPlus, Filter, MoreVertical, Loader2, List, Network, Upload } from "lucide-react";
+import { Search, UserPlus, Filter, MoreVertical, Loader2, List, Network, Upload, Download } from "lucide-react";
+import * as XLSX from "xlsx";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -148,6 +149,50 @@ export default function Empleados() {
     ? employees?.find((e) => e.id === editingEmployee)
     : null;
 
+  const exportToExcel = () => {
+    const dataToExport = filteredEmployees || employees || [];
+    
+    if (dataToExport.length === 0) {
+      toast.error("No hay empleados para exportar");
+      return;
+    }
+
+    const exportData = dataToExport.map((emp) => ({
+      "Tipo Doc.": emp.document_type,
+      "Nro. Doc.": emp.document_number,
+      "Nombres": emp.first_name,
+      "Apellidos": emp.last_name,
+      "Email": emp.email || "",
+      "Teléfono": emp.phone || "",
+      "Fecha Nac.": emp.birth_date || "",
+      "Fecha Ingreso": emp.hire_date || "",
+      "Fecha Retiro": emp.termination_date || "",
+      "Cargo": emp.position || "",
+      "Área": emp.department || "",
+      "Dirección": emp.address || "",
+      "Ciudad": emp.city || "",
+      "Contacto Emergencia": emp.emergency_contact || "",
+      "Tel. Emergencia": emp.emergency_phone || "",
+      "Estado": emp.active ? "Activo" : "Inactivo",
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(exportData);
+    
+    worksheet["!cols"] = [
+      { wch: 10 }, { wch: 15 }, { wch: 20 }, { wch: 20 },
+      { wch: 25 }, { wch: 12 }, { wch: 12 }, { wch: 14 },
+      { wch: 14 }, { wch: 15 }, { wch: 15 }, { wch: 25 },
+      { wch: 12 }, { wch: 20 }, { wch: 14 }, { wch: 10 },
+    ];
+
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Empleados");
+    
+    const fecha = new Date().toISOString().split("T")[0];
+    XLSX.writeFile(workbook, `empleados_${fecha}.xlsx`);
+    toast.success("Lista de empleados exportada");
+  };
+
   return (
     <MainLayout>
       <div className="animate-fade-in">
@@ -160,6 +205,10 @@ export default function Empleados() {
             </p>
           </div>
           <div className="flex gap-2">
+            <Button variant="outline" onClick={exportToExcel}>
+              <Download className="mr-2 h-4 w-4" />
+              Exportar
+            </Button>
             <Button variant="outline" onClick={() => setIsBulkUploadOpen(true)}>
               <Upload className="mr-2 h-4 w-4" />
               Carga Masiva
