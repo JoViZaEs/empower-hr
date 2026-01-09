@@ -20,7 +20,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Upload, FileSpreadsheet, AlertCircle, CheckCircle2, X, Loader2 } from "lucide-react";
+import { Upload, FileSpreadsheet, AlertCircle, CheckCircle2, X, Loader2, Download } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -334,6 +334,71 @@ export function BulkUpload({ open, onOpenChange, onSuccess }: BulkUploadProps) {
     onOpenChange(false);
   };
 
+  const downloadTemplate = () => {
+    // Create template data with headers and example rows
+    const templateData = [
+      {
+        "Tipo Doc.": "CC",
+        "Nro. Doc.": "1234567890",
+        "Nombres": "Juan Carlos",
+        "Apellidos": "Pérez García",
+        "Email": "juan.perez@empresa.com",
+        "Teléfono": "3001234567",
+        "Fecha Nac.": "1990-05-15",
+        "Fecha Ingreso": "2023-01-10",
+        "Cargo": "Analista",
+        "Área": "Sistemas",
+        "Dirección": "Calle 123 #45-67",
+        "Ciudad": "Bogotá",
+        "Contacto Emergencia": "María García",
+        "Tel. Emergencia": "3009876543",
+      },
+      {
+        "Tipo Doc.": "CC",
+        "Nro. Doc.": "9876543210",
+        "Nombres": "Ana María",
+        "Apellidos": "López Rodríguez",
+        "Email": "ana.lopez@empresa.com",
+        "Teléfono": "3112345678",
+        "Fecha Nac.": "1985-11-20",
+        "Fecha Ingreso": "2022-06-01",
+        "Cargo": "Coordinador",
+        "Área": "Recursos Humanos",
+        "Dirección": "Carrera 50 #30-20",
+        "Ciudad": "Medellín",
+        "Contacto Emergencia": "Pedro López",
+        "Tel. Emergencia": "3118765432",
+      },
+    ];
+
+    const worksheet = XLSX.utils.json_to_sheet(templateData);
+    
+    // Set column widths
+    worksheet["!cols"] = [
+      { wch: 10 }, // Tipo Doc.
+      { wch: 15 }, // Nro. Doc.
+      { wch: 20 }, // Nombres
+      { wch: 20 }, // Apellidos
+      { wch: 25 }, // Email
+      { wch: 12 }, // Teléfono
+      { wch: 12 }, // Fecha Nac.
+      { wch: 14 }, // Fecha Ingreso
+      { wch: 15 }, // Cargo
+      { wch: 15 }, // Área
+      { wch: 25 }, // Dirección
+      { wch: 12 }, // Ciudad
+      { wch: 20 }, // Contacto Emergencia
+      { wch: 14 }, // Tel. Emergencia
+    ];
+
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Empleados");
+    
+    // Generate and download
+    XLSX.writeFile(workbook, "plantilla_empleados.xlsx");
+    toast.success("Plantilla descargada");
+  };
+
   const validCount = parsedData.filter(p => p.isValid).length;
   const invalidCount = parsedData.length - validCount;
 
@@ -377,7 +442,13 @@ export function BulkUpload({ open, onOpenChange, onSuccess }: BulkUploadProps) {
             </div>
             
             <div className="rounded-lg bg-muted/50 p-4">
-              <h4 className="font-medium mb-2">Columnas esperadas:</h4>
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="font-medium">Columnas esperadas:</h4>
+                <Button variant="outline" size="sm" onClick={downloadTemplate}>
+                  <Download className="h-4 w-4 mr-2" />
+                  Descargar plantilla
+                </Button>
+              </div>
               <div className="grid grid-cols-2 gap-2 text-sm">
                 <div>
                   <p className="text-muted-foreground mb-1">Requeridas:</p>
