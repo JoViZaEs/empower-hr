@@ -11,7 +11,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Search, UserPlus, Filter, MoreVertical, Loader2, List, Network } from "lucide-react";
+import { Search, UserPlus, Filter, MoreVertical, Loader2, List, Network, Upload } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -30,6 +30,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useState } from "react";
 import { EmpleadoForm, EmployeeFormData } from "@/components/empleados/EmpleadoForm";
 import { Organigrama } from "@/components/empleados/Organigrama";
+import { BulkUpload } from "@/components/empleados/BulkUpload";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 
@@ -41,6 +42,7 @@ export default function Empleados() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<string>("list");
+  const [isBulkUploadOpen, setIsBulkUploadOpen] = useState(false);
 
   const { data: employees, isLoading } = useQuery({
     queryKey: ["employees"],
@@ -157,10 +159,16 @@ export default function Empleados() {
               Gestiona la información de tus empleados
             </p>
           </div>
-          <Button className="gradient-primary" onClick={() => setIsCreateOpen(true)}>
-            <UserPlus className="mr-2 h-4 w-4" />
-            Nuevo Empleado
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setIsBulkUploadOpen(true)}>
+              <Upload className="mr-2 h-4 w-4" />
+              Carga Masiva
+            </Button>
+            <Button className="gradient-primary" onClick={() => setIsCreateOpen(true)}>
+              <UserPlus className="mr-2 h-4 w-4" />
+              Nuevo Empleado
+            </Button>
+          </div>
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
@@ -328,6 +336,16 @@ export default function Empleados() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Dialog para carga masiva */}
+      <BulkUpload
+        open={isBulkUploadOpen}
+        onOpenChange={setIsBulkUploadOpen}
+        onSuccess={() => {
+          queryClient.invalidateQueries({ queryKey: ["employees"] });
+          queryClient.invalidateQueries({ queryKey: ["employees_for_supervisor"] });
+        }}
+      />
     </MainLayout>
   );
 }
