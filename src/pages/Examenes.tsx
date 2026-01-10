@@ -1,85 +1,203 @@
+import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { CalendarPlus, Download, Loader2 } from "lucide-react";
+import { toast } from "sonner";
+import * as XLSX from "xlsx";
+import { format } from "date-fns";
+import { es } from "date-fns/locale";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { CalendarPlus, Stethoscope, Download, Eye, MoreVertical } from "lucide-react";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import type { Tables } from "@/integrations/supabase/types";
 
-const exams = [
-  {
-    id: "1",
-    employee: "María García López",
-    type: "Periódico",
-    entity: "IPS Salud Total",
-    scheduledDate: "15 Dic 2024",
-    status: "completed",
-    result: "Apto",
-  },
-  {
-    id: "2",
-    employee: "Juan Carlos Rodríguez",
-    type: "Ingreso",
-    entity: "Colsanitas",
-    scheduledDate: "20 Dic 2024",
-    status: "scheduled",
-    result: null,
-  },
-  {
-    id: "3",
-    employee: "Ana María Pérez",
-    type: "Periódico",
-    entity: "IPS Salud Total",
-    scheduledDate: "10 Dic 2024",
-    status: "pending",
-    result: null,
-  },
-  {
-    id: "4",
-    employee: "Carlos Andrés Martínez",
-    type: "Retiro",
-    entity: "Sura EPS",
-    scheduledDate: "05 Dic 2024",
-    status: "completed",
-    result: "Apto con restricciones",
-  },
-  {
-    id: "5",
-    employee: "Laura Sofía González",
-    type: "Periódico",
-    entity: "IPS Salud Total",
-    scheduledDate: "28 Dic 2024",
-    status: "scheduled",
-    result: null,
-  },
-];
+// Components
+import { ExamForm } from "@/components/examenes/ExamForm";
+import { ExamResultForm } from "@/components/examenes/ExamResultForm";
+import { ExamVigilanciaForm } from "@/components/examenes/ExamVigilanciaForm";
+import { ExamsTable } from "@/components/examenes/ExamsTable";
+import { ExamDetailDialog } from "@/components/examenes/ExamDetailDialog";
+import { ExamStats } from "@/components/examenes/ExamStats";
 
-const statusBadge = {
-  completed: <Badge className="bg-success/10 text-success border-success/20">Completado</Badge>,
-  scheduled: <Badge className="bg-info/10 text-info border-info/20">Programado</Badge>,
-  pending: <Badge className="bg-warning/10 text-warning border-warning/20">Pendiente</Badge>,
-  expired: <Badge className="bg-destructive/10 text-destructive border-destructive/20">Vencido</Badge>,
-};
-
-const typeBadge = {
-  Ingreso: "bg-primary/10 text-primary border-primary/20",
-  Periódico: "bg-info/10 text-info border-info/20",
-  Retiro: "bg-muted text-muted-foreground border-muted",
-};
+interface ExamWithEmployee extends Tables<"exams"> {
+  employees: {
+    first_name: string;
+    last_name: string;
+    document_number: string;
+  } | null;
+}
 
 export default function Examenes() {
+  const queryClient = useQueryClient();
+  const [activeTab, setActiveTab] = useState("all");
+  
+  // Modal states
+  const [showExamForm, setShowExamForm] = useState(false);
+  const [showResultForm, setShowResultForm] = useState(false);
+  const [showVigilanciaForm, setShowVigilanciaForm] = useState(false);
+  const [showDetailDialog, setShowDetailDialog] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  
+  // Selected exam
+  const [selectedExam, setSelectedExam] = useState<ExamWithEmployee | null>(null);
+  const [vigilanciaData, setVigilanciaData] = useState<{
+    examId: string;
+    employeeId: string;
+  } | null>(null);
+
+  // Fetch exams
+  const { data: exams, isLoading } = useQuery({
+    queryKey: ["exams", activeTab],
+    queryFn: async () => {
+      let query = supabase
+        .from("exams")
+        .select(
+          `
+          *,
+          employees (
+            first_name,
+            last_name,
+            document_number
+          )
+        `
+        )
+        .order("scheduled_date", { ascending: false, nullsFirst: false });
+
+      if (activeTab !== "all") {
+        const typeMap: Record<string, string> = {
+          ingreso: "Ingreso",
+          periodico: "Periódico",
+          retiro: "Retiro",
+        };
+        if (typeMap[activeTab]) {
+          query = query.eq("exam_type", typeMap[activeTab]);
+        }
+      }
+
+      const { data, error } = await query;
+      if (error) throw error;
+      return data as ExamWithEmployee[];
+    },
+  });
+
+  // Delete mutation
+  const deleteMutation = useMutation({
+    mutationFn: async (examId: string) => {
+      const { error } = await supabase.from("exams").delete().eq("id", examId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["exams"] });
+      queryClient.invalidateQueries({ queryKey: ["exam-stats"] });
+      toast.success("Examen eliminado correctamente");
+      setShowDeleteDialog(false);
+      setSelectedExam(null);
+    },
+    onError: (error) => {
+      toast.error("Error al eliminar: " + error.message);
+    },
+  });
+
+  // Export to Excel
+  const handleExport = () => {
+    if (!exams || exams.length === 0) {
+      toast.error("No hay datos para exportar");
+      return;
+    }
+
+    const exportData = exams.map((exam) => ({
+      Empleado: exam.employees
+        ? `${exam.employees.first_name} ${exam.employees.last_name}`
+        : "Sin asignar",
+      Documento: exam.employees?.document_number || "",
+      "Tipo de Examen": exam.exam_type,
+      Entidad: exam.entity || "",
+      "Fecha Programada": exam.scheduled_date
+        ? format(new Date(exam.scheduled_date), "dd/MM/yyyy")
+        : "",
+      "Fecha Examen": exam.exam_date
+        ? format(new Date(exam.exam_date), "dd/MM/yyyy")
+        : "",
+      Vencimiento: exam.expiry_date
+        ? format(new Date(exam.expiry_date), "dd/MM/yyyy")
+        : "",
+      Estado: exam.status || "",
+      Resultado: exam.result || "",
+      Observaciones: exam.observations || "",
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(exportData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Exámenes");
+
+    // Set column widths
+    ws["!cols"] = [
+      { wch: 30 },
+      { wch: 15 },
+      { wch: 18 },
+      { wch: 20 },
+      { wch: 15 },
+      { wch: 15 },
+      { wch: 15 },
+      { wch: 12 },
+      { wch: 20 },
+      { wch: 40 },
+    ];
+
+    const fileName = `examenes_medicos_${format(new Date(), "yyyy-MM-dd")}.xlsx`;
+    XLSX.writeFile(wb, fileName);
+    toast.success("Archivo exportado correctamente");
+  };
+
+  // Handlers
+  const handleViewDetails = (exam: ExamWithEmployee) => {
+    setSelectedExam(exam);
+    setShowDetailDialog(true);
+  };
+
+  const handleEdit = (exam: ExamWithEmployee) => {
+    setSelectedExam(exam);
+    setShowExamForm(true);
+  };
+
+  const handleAddResult = (exam: ExamWithEmployee) => {
+    setSelectedExam(exam);
+    setShowResultForm(true);
+  };
+
+  const handleDelete = (exam: ExamWithEmployee) => {
+    setSelectedExam(exam);
+    setShowDeleteDialog(true);
+  };
+
+  const handleCreateVigilancia = (exam: ExamWithEmployee) => {
+    setVigilanciaData({
+      examId: exam.id,
+      employeeId: exam.employee_id,
+    });
+    setShowVigilanciaForm(true);
+  };
+
+  const handleVigilanciaFromResult = (examId: string, employeeId: string) => {
+    setVigilanciaData({ examId, employeeId });
+    setShowVigilanciaForm(true);
+  };
+
+  const handleNewExam = () => {
+    setSelectedExam(null);
+    setShowExamForm(true);
+  };
+
   return (
     <MainLayout>
       <div className="animate-fade-in">
@@ -92,11 +210,11 @@ export default function Examenes() {
             </p>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline">
+            <Button variant="outline" onClick={handleExport}>
               <Download className="mr-2 h-4 w-4" />
               Exportar
             </Button>
-            <Button className="gradient-primary">
+            <Button className="gradient-primary" onClick={handleNewExam}>
               <CalendarPlus className="mr-2 h-4 w-4" />
               Programar Examen
             </Button>
@@ -104,31 +222,14 @@ export default function Examenes() {
         </div>
 
         {/* Stats */}
-        <div className="mb-8 grid gap-4 sm:grid-cols-4">
-          <div className="rounded-xl border border-border bg-card p-4 shadow-card">
-            <div className="flex items-center gap-2">
-              <Stethoscope className="h-5 w-5 text-primary" />
-              <span className="text-sm text-muted-foreground">Este mes</span>
-            </div>
-            <p className="mt-2 text-2xl font-bold">24</p>
-            <p className="text-sm text-muted-foreground">Exámenes programados</p>
-          </div>
-          <div className="rounded-xl border border-success/20 bg-success/5 p-4 shadow-card">
-            <p className="text-sm text-muted-foreground">Completados</p>
-            <p className="mt-2 text-2xl font-bold text-success">18</p>
-          </div>
-          <div className="rounded-xl border border-warning/20 bg-warning/5 p-4 shadow-card">
-            <p className="text-sm text-muted-foreground">Pendientes</p>
-            <p className="mt-2 text-2xl font-bold text-warning">4</p>
-          </div>
-          <div className="rounded-xl border border-destructive/20 bg-destructive/5 p-4 shadow-card">
-            <p className="text-sm text-muted-foreground">Vencidos</p>
-            <p className="mt-2 text-2xl font-bold text-destructive">2</p>
-          </div>
-        </div>
+        <ExamStats />
 
         {/* Tabs */}
-        <Tabs defaultValue="all" className="space-y-6">
+        <Tabs
+          value={activeTab}
+          onValueChange={setActiveTab}
+          className="space-y-6"
+        >
           <TabsList>
             <TabsTrigger value="all">Todos</TabsTrigger>
             <TabsTrigger value="ingreso">Ingreso</TabsTrigger>
@@ -136,75 +237,89 @@ export default function Examenes() {
             <TabsTrigger value="retiro">Retiro</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="all">
-            <div className="rounded-xl border border-border bg-card shadow-card overflow-hidden">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-muted/50">
-                    <TableHead>Empleado</TableHead>
-                    <TableHead>Tipo</TableHead>
-                    <TableHead>Entidad</TableHead>
-                    <TableHead>Fecha</TableHead>
-                    <TableHead>Estado</TableHead>
-                    <TableHead>Resultado</TableHead>
-                    <TableHead className="w-12"></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {exams.map((exam) => (
-                    <TableRow key={exam.id} className="hover:bg-muted/30">
-                      <TableCell className="font-medium">{exam.employee}</TableCell>
-                      <TableCell>
-                        <Badge className={typeBadge[exam.type as keyof typeof typeBadge]}>
-                          {exam.type}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">{exam.entity}</TableCell>
-                      <TableCell>{exam.scheduledDate}</TableCell>
-                      <TableCell>{statusBadge[exam.status as keyof typeof statusBadge]}</TableCell>
-                      <TableCell>
-                        {exam.result ? (
-                          <span className="font-medium">{exam.result}</span>
-                        ) : (
-                          <span className="text-muted-foreground">-</span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                              <MoreVertical className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem>
-                              <Eye className="mr-2 h-4 w-4" />
-                              Ver detalles
-                            </DropdownMenuItem>
-                            <DropdownMenuItem>Editar</DropdownMenuItem>
-                            <DropdownMenuItem>Adjuntar resultado</DropdownMenuItem>
-                            <DropdownMenuItem>Enviar recordatorio</DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          </TabsContent>
-          
-          <TabsContent value="ingreso">
-            <p className="text-muted-foreground">Exámenes de ingreso...</p>
-          </TabsContent>
-          <TabsContent value="periodico">
-            <p className="text-muted-foreground">Exámenes periódicos...</p>
-          </TabsContent>
-          <TabsContent value="retiro">
-            <p className="text-muted-foreground">Exámenes de retiro...</p>
+          <TabsContent value={activeTab}>
+            {isLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              </div>
+            ) : (
+              <ExamsTable
+                exams={exams || []}
+                onViewDetails={handleViewDetails}
+                onEdit={handleEdit}
+                onAddResult={handleAddResult}
+                onDelete={handleDelete}
+                onCreateVigilancia={handleCreateVigilancia}
+              />
+            )}
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Modals */}
+      <ExamForm
+        open={showExamForm}
+        onOpenChange={(open) => {
+          setShowExamForm(open);
+          if (!open) setSelectedExam(null);
+        }}
+        exam={selectedExam}
+      />
+
+      {selectedExam && (
+        <ExamResultForm
+          open={showResultForm}
+          onOpenChange={(open) => {
+            setShowResultForm(open);
+            if (!open) setSelectedExam(null);
+          }}
+          exam={selectedExam}
+          onVigilanciaCreate={handleVigilanciaFromResult}
+        />
+      )}
+
+      {vigilanciaData && (
+        <ExamVigilanciaForm
+          open={showVigilanciaForm}
+          onOpenChange={(open) => {
+            setShowVigilanciaForm(open);
+            if (!open) setVigilanciaData(null);
+          }}
+          examId={vigilanciaData.examId}
+          employeeId={vigilanciaData.employeeId}
+        />
+      )}
+
+      <ExamDetailDialog
+        open={showDetailDialog}
+        onOpenChange={setShowDetailDialog}
+        exam={selectedExam}
+      />
+
+      {/* Delete confirmation */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar examen?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción no se puede deshacer. El examen será eliminado
+              permanentemente del sistema.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => selectedExam && deleteMutation.mutate(selectedExam.id)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteMutation.isPending ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : null}
+              Eliminar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </MainLayout>
   );
 }
