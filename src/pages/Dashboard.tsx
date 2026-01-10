@@ -26,7 +26,6 @@ export default function Dashboard() {
       const startOfCurrentMonth = startOfMonth(new Date()).toISOString();
       const startOfLastMonth = startOfMonth(subMonths(new Date(), 1)).toISOString();
       
-      // Get all employees
       const { data: employees, error } = await supabase
         .from("employees")
         .select("id, active, hire_date, created_at");
@@ -36,29 +35,40 @@ export default function Dashboard() {
       const activeEmployees = employees?.filter(e => e.active) || [];
       const totalActive = activeEmployees.length;
       
-      // New this month (hired or created this month)
       const newThisMonth = activeEmployees.filter(e => {
         const hireDate = e.hire_date || e.created_at;
         return hireDate && hireDate >= startOfCurrentMonth;
       }).length;
       
-      // New last month for trend calculation
       const newLastMonth = activeEmployees.filter(e => {
         const hireDate = e.hire_date || e.created_at;
         return hireDate && hireDate >= startOfLastMonth && hireDate < startOfCurrentMonth;
       }).length;
       
-      // Calculate trend percentage
       const trend = newLastMonth > 0 
         ? Math.round(((newThisMonth - newLastMonth) / newLastMonth) * 100)
         : newThisMonth > 0 ? 100 : 0;
       
-      return {
-        totalActive,
-        newThisMonth,
-        trend,
-        trendIsPositive: trend >= 0
-      };
+      return { totalActive, newThisMonth, trend, trendIsPositive: trend >= 0 };
+    },
+  });
+
+  // Query for exams stats
+  const { data: examStats } = useQuery({
+    queryKey: ["dashboard-exam-stats"],
+    queryFn: async () => {
+      const { data: exams, error } = await supabase
+        .from("exams")
+        .select("id, status, employee_id");
+      
+      if (error) throw error;
+      
+      const total = exams?.length || 0;
+      const upToDate = exams?.filter(e => e.status === "vigente").length || 0;
+      const pending = exams?.filter(e => e.status === "pendiente" || e.status === "vencido").length || 0;
+      const percentage = total > 0 ? Math.round((upToDate / total) * 100) : 0;
+      
+      return { total, upToDate, pending, percentage };
     },
   });
 
@@ -84,10 +94,10 @@ export default function Dashboard() {
           />
           <StatCard
             title="Exámenes al Día"
-            value="92%"
-            subtitle="144 de 156 empleados"
+            value={examStats ? `${examStats.percentage}%` : "-"}
+            subtitle={examStats ? `${examStats.upToDate} de ${examStats.total} exámenes` : "Cargando..."}
             icon={Stethoscope}
-            variant="success"
+            variant={examStats && examStats.percentage >= 80 ? "success" : "warning"}
           />
           <StatCard
             title="Cursos Vigentes"

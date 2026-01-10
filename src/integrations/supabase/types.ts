@@ -671,12 +671,14 @@ export type Database = {
           created_by: string | null
           document_url: string | null
           employee_id: string
+          entity: string | null
           exam_date: string
           exam_type: string
           expiry_date: string | null
           id: string
           observations: string | null
           result: string | null
+          scheduled_date: string | null
           status: Database["public"]["Enums"]["exam_status"] | null
           tenant_id: string
           updated_at: string | null
@@ -686,12 +688,14 @@ export type Database = {
           created_by?: string | null
           document_url?: string | null
           employee_id: string
+          entity?: string | null
           exam_date: string
           exam_type: string
           expiry_date?: string | null
           id?: string
           observations?: string | null
           result?: string | null
+          scheduled_date?: string | null
           status?: Database["public"]["Enums"]["exam_status"] | null
           tenant_id: string
           updated_at?: string | null
@@ -701,12 +705,14 @@ export type Database = {
           created_by?: string | null
           document_url?: string | null
           employee_id?: string
+          entity?: string | null
           exam_date?: string
           exam_type?: string
           expiry_date?: string | null
           id?: string
           observations?: string | null
           result?: string | null
+          scheduled_date?: string | null
           status?: Database["public"]["Enums"]["exam_status"] | null
           tenant_id?: string
           updated_at?: string | null
