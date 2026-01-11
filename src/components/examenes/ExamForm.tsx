@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -77,13 +77,26 @@ export function ExamForm({ open, onOpenChange, exam }: ExamFormProps) {
   const form = useForm<ExamFormValues>({
     resolver: zodResolver(examFormSchema),
     defaultValues: {
-      employee_id: exam?.employee_id || "",
-      exam_type: exam?.exam_type || "",
-      scheduled_date: exam?.scheduled_date || exam?.exam_date || "",
-      entity: exam?.entity || "",
-      observations: exam?.observations || "",
+      employee_id: "",
+      exam_type: "",
+      scheduled_date: "",
+      entity: "",
+      observations: "",
     },
   });
+
+  // Reset form when exam changes (for edit mode)
+  useEffect(() => {
+    if (open) {
+      form.reset({
+        employee_id: exam?.employee_id || "",
+        exam_type: exam?.exam_type || "",
+        scheduled_date: exam?.scheduled_date || exam?.exam_date || "",
+        entity: exam?.entity || "",
+        observations: exam?.observations || "",
+      });
+    }
+  }, [exam, open, form]);
 
   const mutation = useMutation({
     mutationFn: async (values: ExamFormValues) => {
@@ -196,7 +209,7 @@ export function ExamForm({ open, onOpenChange, exam }: ExamFormProps) {
                   <FormLabel>Tipo de Examen</FormLabel>
                   <Select
                     onValueChange={field.onChange}
-                    defaultValue={field.value}
+                    value={field.value}
                   >
                     <FormControl>
                       <SelectTrigger>
