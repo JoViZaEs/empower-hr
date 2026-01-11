@@ -282,6 +282,7 @@ export function EmpleadoExamenes({ employeeId }: EmpleadoExamenesProps) {
           if (!open) setSelectedExam(null);
         }}
         exam={selectedExam}
+        defaultEmployeeId={employeeId}
       />
 
       {selectedExam && (

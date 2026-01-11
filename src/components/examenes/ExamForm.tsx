@@ -46,6 +46,7 @@ interface ExamFormProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   exam?: Tables<"exams"> | null;
+  defaultEmployeeId?: string;
 }
 
 const EXAM_TYPES = [
@@ -56,9 +57,10 @@ const EXAM_TYPES = [
   "Por cambio de puesto",
 ];
 
-export function ExamForm({ open, onOpenChange, exam }: ExamFormProps) {
+export function ExamForm({ open, onOpenChange, exam, defaultEmployeeId }: ExamFormProps) {
   const queryClient = useQueryClient();
   const isEditing = !!exam;
+  const hasDefaultEmployee = !!defaultEmployeeId;
 
   const { data: employees, isLoading: loadingEmployees } = useQuery({
     queryKey: ["employees-active"],
@@ -85,18 +87,18 @@ export function ExamForm({ open, onOpenChange, exam }: ExamFormProps) {
     },
   });
 
-  // Reset form when exam changes (for edit mode)
+  // Reset form when exam changes (for edit mode) or when defaultEmployeeId is provided
   useEffect(() => {
     if (open) {
       form.reset({
-        employee_id: exam?.employee_id || "",
+        employee_id: exam?.employee_id || defaultEmployeeId || "",
         exam_type: exam?.exam_type || "",
         scheduled_date: exam?.scheduled_date || exam?.exam_date || "",
         entity: exam?.entity || "",
         observations: exam?.observations || "",
       });
     }
-  }, [exam, open, form]);
+  }, [exam, open, form, defaultEmployeeId]);
 
   const mutation = useMutation({
     mutationFn: async (values: ExamFormValues) => {
@@ -180,8 +182,8 @@ export function ExamForm({ open, onOpenChange, exam }: ExamFormProps) {
                   <FormLabel>Empleado</FormLabel>
                   <Select
                     onValueChange={field.onChange}
-                    defaultValue={field.value}
-                    disabled={loadingEmployees}
+                    value={field.value}
+                    disabled={loadingEmployees || hasDefaultEmployee}
                   >
                     <FormControl>
                       <SelectTrigger>
