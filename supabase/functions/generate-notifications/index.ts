@@ -34,8 +34,58 @@ Deno.serve(async (req) => {
 
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-    const supabase = createClient(supabaseUrl, supabaseServiceKey)
+
+    // 1. Verify authentication
+    const authHeader = req.headers.get('Authorization')
+    if (!authHeader?.startsWith('Bearer ')) {
+      console.log('No authorization header provided')
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized - No authorization header' }), 
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // 2. Validate JWT token using anon client
+    const supabaseAuth = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } }
+    })
+
+    const token = authHeader.replace('Bearer ', '')
+    const { data: claimsData, error: claimsError } = await supabaseAuth.auth.getClaims(token)
+    
+    if (claimsError || !claimsData?.claims) {
+      console.log('Invalid token:', claimsError?.message)
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized - Invalid token' }), 
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    const userId = claimsData.claims.sub as string
+
+    // 3. Check if user is super admin (using service role for elevated query)
+    const supabaseService = createClient(supabaseUrl, supabaseServiceKey)
+    
+    const { data: profile, error: profileError } = await supabaseService
+      .from('profiles')
+      .select('is_super_admin, tenant_id')
+      .eq('user_id', userId)
+      .single()
+
+    if (profileError || !profile?.is_super_admin) {
+      console.log('User is not super admin:', userId)
+      return new Response(
+        JSON.stringify({ error: 'Forbidden - Admin access required' }), 
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    console.log('Authenticated super admin:', userId)
+
+    // Now proceed with the notification generation using service role
+    const supabase = supabaseService
 
     // Obtener todos los tenants activos
     const { data: tenants, error: tenantsError } = await supabase
@@ -269,10 +319,10 @@ Deno.serve(async (req) => {
         userNotificationsMap.set(notification.userId, existing)
       }
 
-      for (const [userId, userNotifications] of userNotificationsMap) {
+      for (const [notifUserId, userNotifications] of userNotificationsMap) {
         // Obtener preferencias del usuario
         const { data: prefs } = await supabase
-          .rpc('get_user_notification_preferences', { _user_id: userId })
+          .rpc('get_user_notification_preferences', { _user_id: notifUserId })
 
         const preferences: UserPreferences = prefs?.[0] || {
           receive_summary: false,
@@ -286,7 +336,7 @@ Deno.serve(async (req) => {
         if (preferences.receive_summary) {
           // Guardar para resumen consolidado
           const summaryNotifications = userNotifications.map(n => ({
-            user_id: userId,
+            user_id: notifUserId,
             tenant_id: tenantId,
             notification_type: n.type,
             title: n.title,
@@ -308,7 +358,7 @@ Deno.serve(async (req) => {
             const { data: existing } = await supabase
               .from('notifications')
               .select('id')
-              .eq('user_id', userId)
+              .eq('user_id', notifUserId)
               .eq('type', n.type)
               .eq('title', n.title)
               .gte('created_at', yesterday.toISOString())
@@ -318,7 +368,7 @@ Deno.serve(async (req) => {
               await supabase
                 .from('notifications')
                 .insert({
-                  user_id: userId,
+                  user_id: notifUserId,
                   tenant_id: tenantId,
                   type: n.type,
                   title: n.title,
@@ -335,6 +385,8 @@ Deno.serve(async (req) => {
         notificationsGenerated: notifications.length
       })
     }
+
+    console.log('Notifications generated successfully:', results.length, 'tenants processed')
 
     return new Response(
       JSON.stringify({ success: true, results }),
