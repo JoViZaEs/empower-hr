@@ -10,9 +10,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Plus, Pencil, FileText, Briefcase, Building2, Loader2, Activity } from "lucide-react";
+import { Plus, Pencil, FileText, Briefcase, Building2, Loader2, Activity, Stethoscope, Lock } from "lucide-react";
 
-type MasterDataType = "document_types" | "positions" | "departments" | "vigilancia_types";
+type MasterDataType = "document_types" | "positions" | "departments" | "vigilancia_types" | "exam_types";
 
 interface MasterDataItem {
   id: string;
@@ -20,6 +20,7 @@ interface MasterDataItem {
   code?: string;
   description?: string;
   active: boolean;
+  is_standard?: boolean;
 }
 
 interface MasterDataFormProps {
@@ -53,23 +54,73 @@ function MasterDataForm({ type, item, onSuccess, onCancel }: MasterDataFormProps
 
       if (!profile?.tenant_id) throw new Error("Tenant no encontrado");
 
-      const baseData = { name, active };
-      const data = type === "document_types" 
-        ? { ...baseData, code, tenant_id: profile.tenant_id }
-        : { ...baseData, description, tenant_id: profile.tenant_id };
-
       if (item) {
-        const { error } = await supabase
-          .from(type)
-          .update(data)
-          .eq("id", item.id);
-        if (error) throw error;
+        // Don't allow editing standard items
+        if (item.is_standard) {
+          toast.error("No se pueden editar los tipos estándar del sistema");
+          setIsSubmitting(false);
+          return;
+        }
+        
+        if (type === "document_types") {
+          const { error } = await supabase
+            .from("document_types")
+            .update({ name, active, code, tenant_id: profile.tenant_id })
+            .eq("id", item.id);
+          if (error) throw error;
+        } else if (type === "exam_types") {
+          const { error } = await supabase
+            .from("exam_types")
+            .update({ name, active, description })
+            .eq("id", item.id);
+          if (error) throw error;
+        } else if (type === "positions") {
+          const { error } = await supabase
+            .from("positions")
+            .update({ name, active, description })
+            .eq("id", item.id);
+          if (error) throw error;
+        } else if (type === "departments") {
+          const { error } = await supabase
+            .from("departments")
+            .update({ name, active, description })
+            .eq("id", item.id);
+          if (error) throw error;
+        } else if (type === "vigilancia_types") {
+          const { error } = await supabase
+            .from("vigilancia_types")
+            .update({ name, active, description })
+            .eq("id", item.id);
+          if (error) throw error;
+        }
         toast.success("Registro actualizado");
       } else {
-        const { error } = await supabase
-          .from(type)
-          .insert([data]);
-        if (error) throw error;
+        if (type === "document_types") {
+          const { error } = await supabase
+            .from("document_types")
+            .insert([{ name, active, code, tenant_id: profile.tenant_id }]);
+          if (error) throw error;
+        } else if (type === "exam_types") {
+          const { error } = await supabase
+            .from("exam_types")
+            .insert([{ name, active, description, tenant_id: profile.tenant_id, is_standard: false }]);
+          if (error) throw error;
+        } else if (type === "positions") {
+          const { error } = await supabase
+            .from("positions")
+            .insert([{ name, active, description, tenant_id: profile.tenant_id }]);
+          if (error) throw error;
+        } else if (type === "departments") {
+          const { error } = await supabase
+            .from("departments")
+            .insert([{ name, active, description, tenant_id: profile.tenant_id }]);
+          if (error) throw error;
+        } else if (type === "vigilancia_types") {
+          const { error } = await supabase
+            .from("vigilancia_types")
+            .insert([{ name, active, description, tenant_id: profile.tenant_id }]);
+          if (error) throw error;
+        }
         toast.success("Registro creado");
       }
 
@@ -140,9 +191,10 @@ interface MasterDataListProps {
   title: string;
   description: string;
   icon: React.ReactNode;
+  hasStandardItems?: boolean;
 }
 
-function MasterDataList({ type, title, description, icon }: MasterDataListProps) {
+function MasterDataList({ type, title, description, icon, hasStandardItems = false }: MasterDataListProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<MasterDataItem | null>(null);
   const queryClient = useQueryClient();
@@ -150,17 +202,23 @@ function MasterDataList({ type, title, description, icon }: MasterDataListProps)
   const { data: items, isLoading } = useQuery({
     queryKey: [type],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const query = supabase
         .from(type)
         .select("*")
         .order("name");
+      
+      const { data, error } = await query;
       if (error) throw error;
       return data as MasterDataItem[];
     },
   });
 
   const toggleActive = useMutation({
-    mutationFn: async ({ id, active }: { id: string; active: boolean }) => {
+    mutationFn: async ({ id, active, isStandard }: { id: string; active: boolean; isStandard?: boolean }) => {
+      // Don't allow toggling standard items
+      if (isStandard) {
+        throw new Error("No se pueden modificar los tipos estándar del sistema");
+      }
       const { error } = await supabase
         .from(type)
         .update({ active })
@@ -171,12 +229,16 @@ function MasterDataList({ type, title, description, icon }: MasterDataListProps)
       queryClient.invalidateQueries({ queryKey: [type] });
       toast.success("Estado actualizado");
     },
-    onError: () => {
-      toast.error("Error al actualizar estado");
+    onError: (error: any) => {
+      toast.error(error.message || "Error al actualizar estado");
     },
   });
 
   const handleEdit = (item: MasterDataItem) => {
+    if (item.is_standard) {
+      toast.error("No se pueden editar los tipos estándar del sistema");
+      return;
+    }
     setEditingItem(item);
     setIsDialogOpen(true);
   };
@@ -185,6 +247,10 @@ function MasterDataList({ type, title, description, icon }: MasterDataListProps)
     setIsDialogOpen(false);
     setEditingItem(null);
   };
+
+  // Separate standard and custom items for display
+  const standardItems = hasStandardItems ? items?.filter(item => item.is_standard) : [];
+  const customItems = hasStandardItems ? items?.filter(item => !item.is_standard) : items;
 
   return (
     <Card>
@@ -230,42 +296,102 @@ function MasterDataList({ type, title, description, icon }: MasterDataListProps)
             No hay registros. Agrega el primero.
           </p>
         ) : (
-          <div className="space-y-2">
-            {items?.map((item) => (
-              <div
-                key={item.id}
-                className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors"
-              >
-                <div className="flex items-center gap-3">
-                  {type === "document_types" && item.code && (
-                    <Badge variant="outline" className="font-mono">
-                      {item.code}
-                    </Badge>
-                  )}
-                  <div>
-                    <p className="font-medium">{item.name}</p>
-                    {item.description && (
-                      <p className="text-sm text-muted-foreground">{item.description}</p>
-                    )}
-                  </div>
+          <div className="space-y-4">
+            {/* Standard items section */}
+            {hasStandardItems && standardItems && standardItems.length > 0 && (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
+                  <Lock className="h-4 w-4" />
+                  <span>Tipos estándar del sistema</span>
                 </div>
-                <div className="flex items-center gap-3">
-                  <Switch
-                    checked={item.active}
-                    onCheckedChange={(checked) =>
-                      toggleActive.mutate({ id: item.id, active: checked })
-                    }
-                  />
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => handleEdit(item)}
+                {standardItems.map((item) => (
+                  <div
+                    key={item.id}
+                    className="flex items-center justify-between p-3 rounded-lg border bg-muted/30"
                   >
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-                </div>
+                    <div className="flex items-center gap-3">
+                      <Badge variant="secondary" className="text-xs">
+                        Estándar
+                      </Badge>
+                      <div>
+                        <p className="font-medium">{item.name}</p>
+                        {item.description && (
+                          <p className="text-sm text-muted-foreground">{item.description}</p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <Switch
+                        checked={item.active}
+                        disabled
+                        className="opacity-50"
+                      />
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        disabled
+                        className="opacity-50"
+                      >
+                        <Lock className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
+            )}
+
+            {/* Custom items section */}
+            {customItems && customItems.length > 0 && (
+              <div className="space-y-2">
+                {hasStandardItems && standardItems && standardItems.length > 0 && (
+                  <div className="text-sm text-muted-foreground mb-2 mt-4">
+                    Tipos personalizados de tu empresa
+                  </div>
+                )}
+                {customItems.map((item) => (
+                  <div
+                    key={item.id}
+                    className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      {type === "document_types" && item.code && (
+                        <Badge variant="outline" className="font-mono">
+                          {item.code}
+                        </Badge>
+                      )}
+                      <div>
+                        <p className="font-medium">{item.name}</p>
+                        {item.description && (
+                          <p className="text-sm text-muted-foreground">{item.description}</p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <Switch
+                        checked={item.active}
+                        onCheckedChange={(checked) =>
+                          toggleActive.mutate({ id: item.id, active: checked, isStandard: item.is_standard })
+                        }
+                      />
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleEdit(item)}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Show message if only standard items exist */}
+            {hasStandardItems && (!customItems || customItems.length === 0) && standardItems && standardItems.length > 0 && (
+              <p className="text-sm text-muted-foreground text-center py-2 mt-4">
+                Puedes agregar tipos personalizados para tu empresa usando el botón "Agregar".
+              </p>
+            )}
           </div>
         )}
       </CardContent>
@@ -284,7 +410,7 @@ export function MasterDataSettings() {
       </div>
 
       <Tabs defaultValue="document_types" className="space-y-4">
-        <TabsList>
+        <TabsList className="flex-wrap h-auto gap-1">
           <TabsTrigger value="document_types" className="flex items-center gap-2">
             <FileText className="h-4 w-4" />
             Tipos de Documento
@@ -293,13 +419,17 @@ export function MasterDataSettings() {
             <Briefcase className="h-4 w-4" />
             Cargos
           </TabsTrigger>
-        <TabsTrigger value="departments" className="flex items-center gap-2">
+          <TabsTrigger value="departments" className="flex items-center gap-2">
             <Building2 className="h-4 w-4" />
             Áreas
           </TabsTrigger>
           <TabsTrigger value="vigilancia_types" className="flex items-center gap-2">
             <Activity className="h-4 w-4" />
             Tipos de Vigilancia
+          </TabsTrigger>
+          <TabsTrigger value="exam_types" className="flex items-center gap-2">
+            <Stethoscope className="h-4 w-4" />
+            Tipos de Examen
           </TabsTrigger>
         </TabsList>
 
@@ -336,6 +466,16 @@ export function MasterDataSettings() {
             title="Tipos de Vigilancia"
             description="Define los tipos de vigilancia epidemiológica disponibles"
             icon={<Activity className="h-5 w-5 text-muted-foreground" />}
+          />
+        </TabsContent>
+
+        <TabsContent value="exam_types">
+          <MasterDataList
+            type="exam_types"
+            title="Tipos de Examen"
+            description="Los tipos estándar están disponibles para todos. Puedes agregar tipos personalizados."
+            icon={<Stethoscope className="h-5 w-5 text-muted-foreground" />}
+            hasStandardItems={true}
           />
         </TabsContent>
       </Tabs>

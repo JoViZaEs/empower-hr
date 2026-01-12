@@ -49,18 +49,25 @@ interface ExamFormProps {
   defaultEmployeeId?: string;
 }
 
-const EXAM_TYPES = [
-  "Ingreso",
-  "Periódico",
-  "Retiro",
-  "Reintegro",
-  "Por cambio de puesto",
-];
-
 export function ExamForm({ open, onOpenChange, exam, defaultEmployeeId }: ExamFormProps) {
   const queryClient = useQueryClient();
   const isEditing = !!exam;
   const hasDefaultEmployee = !!defaultEmployeeId;
+
+  const { data: examTypes, isLoading: loadingExamTypes } = useQuery({
+    queryKey: ["exam-types"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("exam_types")
+        .select("id, name, is_standard")
+        .eq("active", true)
+        .order("is_standard", { ascending: false })
+        .order("name");
+
+      if (error) throw error;
+      return data;
+    },
+  });
 
   const { data: employees, isLoading: loadingEmployees } = useQuery({
     queryKey: ["employees-active"],
@@ -219,11 +226,15 @@ export function ExamForm({ open, onOpenChange, exam, defaultEmployeeId }: ExamFo
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {EXAM_TYPES.map((type) => (
-                        <SelectItem key={type} value={type}>
-                          {type}
-                        </SelectItem>
-                      ))}
+                      {loadingExamTypes ? (
+                        <SelectItem value="" disabled>Cargando...</SelectItem>
+                      ) : (
+                        examTypes?.map((type) => (
+                          <SelectItem key={type.id} value={type.name}>
+                            {type.name}
+                          </SelectItem>
+                        ))
+                      )}
                     </SelectContent>
                   </Select>
                   <FormMessage />
