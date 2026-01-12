@@ -10,9 +10,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Plus, Pencil, FileText, Briefcase, Building2, Loader2 } from "lucide-react";
+import { Plus, Pencil, FileText, Briefcase, Building2, Loader2, Activity } from "lucide-react";
 
-type MasterDataType = "document_types" | "positions" | "departments";
+type MasterDataType = "document_types" | "positions" | "departments" | "vigilancia_types";
 
 interface MasterDataItem {
   id: string;
@@ -293,9 +293,13 @@ export function MasterDataSettings() {
             <Briefcase className="h-4 w-4" />
             Cargos
           </TabsTrigger>
-          <TabsTrigger value="departments" className="flex items-center gap-2">
+        <TabsTrigger value="departments" className="flex items-center gap-2">
             <Building2 className="h-4 w-4" />
             Áreas
+          </TabsTrigger>
+          <TabsTrigger value="vigilancia_types" className="flex items-center gap-2">
+            <Activity className="h-4 w-4" />
+            Tipos de Vigilancia
           </TabsTrigger>
         </TabsList>
 
@@ -323,6 +327,15 @@ export function MasterDataSettings() {
             title="Áreas"
             description="Define las áreas o departamentos de la empresa"
             icon={<Building2 className="h-5 w-5 text-muted-foreground" />}
+          />
+        </TabsContent>
+
+        <TabsContent value="vigilancia_types">
+          <MasterDataList
+            type="vigilancia_types"
+            title="Tipos de Vigilancia"
+            description="Define los tipos de vigilancia epidemiológica disponibles"
+            icon={<Activity className="h-5 w-5 text-muted-foreground" />}
           />
         </TabsContent>
       </Tabs>

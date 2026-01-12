@@ -2,7 +2,7 @@ import { useState, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useDropzone } from "react-dropzone";
@@ -40,6 +40,7 @@ const resultFormSchema = z.object({
   expiry_date: z.string().optional(),
   observations: z.string().optional(),
   create_vigilancia: z.boolean().optional(),
+  vigilancia_type_id: z.string().optional(),
 });
 
 type ResultFormValues = z.infer<typeof resultFormSchema>;
@@ -48,7 +49,7 @@ interface ExamResultFormProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   exam: Tables<"exams">;
-  onVigilanciaCreate?: (examId: string, employeeId: string) => void;
+  onVigilanciaCreate?: (examId: string, employeeId: string, vigilanciaTypeId?: string) => void;
 }
 
 const RESULT_OPTIONS = [
@@ -70,6 +71,20 @@ export function ExamResultForm({
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
 
+  // Fetch vigilancia types from master data
+  const { data: vigilanciaTypes } = useQuery({
+    queryKey: ["vigilancia_types"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("vigilancia_types")
+        .select("*")
+        .eq("active", true)
+        .order("name");
+      if (error) throw error;
+      return data;
+    },
+  });
+
   const form = useForm<ResultFormValues>({
     resolver: zodResolver(resultFormSchema),
     defaultValues: {
@@ -78,10 +93,12 @@ export function ExamResultForm({
       expiry_date: exam.expiry_date || "",
       observations: exam.observations || "",
       create_vigilancia: false,
+      vigilancia_type_id: "",
     },
   });
 
   const selectedResult = form.watch("result");
+  const createVigilancia = form.watch("create_vigilancia");
   const resultOption = RESULT_OPTIONS.find((o) => o.value === selectedResult);
   const showVigilanciaOption = resultOption?.requiresVigilancia;
 
@@ -152,7 +169,7 @@ export function ExamResultForm({
       toast.success("Resultado registrado correctamente");
 
       if (values.create_vigilancia && onVigilanciaCreate) {
-        onVigilanciaCreate(exam.id, exam.employee_id);
+        onVigilanciaCreate(exam.id, exam.employee_id, values.vigilancia_type_id);
       }
 
       setFile(null);
@@ -225,7 +242,7 @@ export function ExamResultForm({
                 <AlertDescription className="text-sm">
                   Este resultado puede requerir seguimiento en una vigilancia
                   epidemiológica.
-                  <div className="mt-2">
+                  <div className="mt-2 space-y-3">
                     <FormField
                       control={form.control}
                       name="create_vigilancia"
@@ -241,6 +258,35 @@ export function ExamResultForm({
                         </label>
                       )}
                     />
+                    {createVigilancia && (
+                      <FormField
+                        control={form.control}
+                        name="vigilancia_type_id"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Tipo de Vigilancia</FormLabel>
+                            <Select
+                              onValueChange={field.onChange}
+                              value={field.value}
+                            >
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Seleccione el tipo" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {vigilanciaTypes?.map((type) => (
+                                  <SelectItem key={type.id} value={type.id}>
+                                    {type.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    )}
                   </div>
                 </AlertDescription>
               </Alert>
