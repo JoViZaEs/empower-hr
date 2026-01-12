@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -47,27 +48,31 @@ interface ExamVigilanciaFormProps {
   onOpenChange: (open: boolean) => void;
   examId: string;
   employeeId: string;
+  defaultVigilanciaTypeId?: string;
 }
-
-const VIGILANCIA_TYPES = [
-  "Osteomuscular",
-  "Cardiovascular",
-  "Auditivo",
-  "Visual",
-  "Respiratorio",
-  "Psicosocial",
-  "Dermatológico",
-  "Neurológico",
-  "Otro",
-];
 
 export function ExamVigilanciaForm({
   open,
   onOpenChange,
   examId,
   employeeId,
+  defaultVigilanciaTypeId,
 }: ExamVigilanciaFormProps) {
   const queryClient = useQueryClient();
+
+  // Fetch vigilancia types from master data
+  const { data: vigilanciaTypes } = useQuery({
+    queryKey: ["vigilancia_types"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("vigilancia_types")
+        .select("*")
+        .eq("active", true)
+        .order("name");
+      if (error) throw error;
+      return data;
+    },
+  });
 
   // Fetch exam data to pre-fill some fields
   const { data: exam } = useQuery({
@@ -96,6 +101,16 @@ export function ExamVigilanciaForm({
       recommendations: "",
     },
   });
+
+  // Pre-select vigilancia type if provided
+  useEffect(() => {
+    if (open && defaultVigilanciaTypeId && vigilanciaTypes) {
+      const selectedType = vigilanciaTypes.find(t => t.id === defaultVigilanciaTypeId);
+      if (selectedType) {
+        form.setValue("vigilancia_type", selectedType.name);
+      }
+    }
+  }, [open, defaultVigilanciaTypeId, vigilanciaTypes, form]);
 
   const mutation = useMutation({
     mutationFn: async (values: VigilanciaFormValues) => {
@@ -177,9 +192,9 @@ export function ExamVigilanciaForm({
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {VIGILANCIA_TYPES.map((type) => (
-                        <SelectItem key={type} value={type}>
-                          {type}
+                      {vigilanciaTypes?.map((type) => (
+                        <SelectItem key={type.id} value={type.name}>
+                          {type.name}
                         </SelectItem>
                       ))}
                     </SelectContent>

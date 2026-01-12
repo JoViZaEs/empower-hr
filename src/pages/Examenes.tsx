@@ -53,6 +53,7 @@ export default function Examenes() {
   const [vigilanciaData, setVigilanciaData] = useState<{
     examId: string;
     employeeId: string;
+    vigilanciaTypeId?: string;
   } | null>(null);
 
   // Fetch exams
@@ -188,8 +189,8 @@ export default function Examenes() {
     setShowVigilanciaForm(true);
   };
 
-  const handleVigilanciaFromResult = (examId: string, employeeId: string) => {
-    setVigilanciaData({ examId, employeeId });
+  const handleVigilanciaFromResult = (examId: string, employeeId: string, vigilanciaTypeId?: string) => {
+    setVigilanciaData({ examId, employeeId, vigilanciaTypeId });
     setShowVigilanciaForm(true);
   };
 
@@ -287,6 +288,7 @@ export default function Examenes() {
           }}
           examId={vigilanciaData.examId}
           employeeId={vigilanciaData.employeeId}
+          defaultVigilanciaTypeId={vigilanciaData.vigilanciaTypeId}
         />
       )}
 

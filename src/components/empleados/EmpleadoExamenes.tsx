@@ -81,6 +81,7 @@ export function EmpleadoExamenes({ employeeId }: EmpleadoExamenesProps) {
   
   // Selected exam
   const [selectedExam, setSelectedExam] = useState<ExamWithEmployee | null>(null);
+  const [vigilanciaTypeId, setVigilanciaTypeId] = useState<string | undefined>(undefined);
 
   const { data: exams, isLoading } = useQuery({
     queryKey: ["employee-exams", employeeId],
@@ -152,8 +153,9 @@ export function EmpleadoExamenes({ employeeId }: EmpleadoExamenesProps) {
     setShowVigilanciaForm(true);
   };
 
-  const handleVigilanciaFromResult = () => {
+  const handleVigilanciaFromResult = (_examId: string, _employeeId: string, typeId?: string) => {
     if (selectedExam) {
+      setVigilanciaTypeId(typeId);
       setShowResultForm(false);
       setShowVigilanciaForm(true);
     }
@@ -302,10 +304,14 @@ export function EmpleadoExamenes({ employeeId }: EmpleadoExamenesProps) {
           open={showVigilanciaForm}
           onOpenChange={(open) => {
             setShowVigilanciaForm(open);
-            if (!open) setSelectedExam(null);
+            if (!open) {
+              setSelectedExam(null);
+              setVigilanciaTypeId(undefined);
+            }
           }}
           examId={selectedExam.id}
           employeeId={selectedExam.employee_id}
+          defaultVigilanciaTypeId={vigilanciaTypeId}
         />
       )}
 
