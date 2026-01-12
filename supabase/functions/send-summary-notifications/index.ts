@@ -12,8 +12,58 @@ Deno.serve(async (req) => {
 
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-    const supabase = createClient(supabaseUrl, supabaseServiceKey)
+
+    // 1. Verify authentication
+    const authHeader = req.headers.get('Authorization')
+    if (!authHeader?.startsWith('Bearer ')) {
+      console.log('No authorization header provided')
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized - No authorization header' }), 
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // 2. Validate JWT token using anon client
+    const supabaseAuth = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } }
+    })
+
+    const token = authHeader.replace('Bearer ', '')
+    const { data: claimsData, error: claimsError } = await supabaseAuth.auth.getClaims(token)
+    
+    if (claimsError || !claimsData?.claims) {
+      console.log('Invalid token:', claimsError?.message)
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized - Invalid token' }), 
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    const userId = claimsData.claims.sub as string
+
+    // 3. Check if user is super admin (using service role for elevated query)
+    const supabaseService = createClient(supabaseUrl, supabaseServiceKey)
+    
+    const { data: profile, error: profileError } = await supabaseService
+      .from('profiles')
+      .select('is_super_admin, tenant_id')
+      .eq('user_id', userId)
+      .single()
+
+    if (profileError || !profile?.is_super_admin) {
+      console.log('User is not super admin:', userId)
+      return new Response(
+        JSON.stringify({ error: 'Forbidden - Admin access required' }), 
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    console.log('Authenticated super admin:', userId)
+
+    // Now proceed with service role client
+    const supabase = supabaseService
 
     // Obtener notificaciones pendientes agrupadas por usuario
     const { data: pendingNotifications, error } = await supabase
@@ -36,7 +86,7 @@ Deno.serve(async (req) => {
 
     const results = []
 
-    for (const [userId, notifications] of userNotificationsMap) {
+    for (const [notifUserId, notifications] of userNotificationsMap) {
       if (notifications.length === 0) continue
 
       const tenantId = notifications[0].tenant_id
@@ -69,7 +119,7 @@ Deno.serve(async (req) => {
       await supabase
         .from('notifications')
         .insert({
-          user_id: userId,
+          user_id: notifUserId,
           tenant_id: tenantId,
           type: 'resumen',
           title: `Resumen: ${notifications.length} alertas pendientes`,
@@ -85,10 +135,12 @@ Deno.serve(async (req) => {
         .in('id', notificationIds)
 
       results.push({
-        userId,
+        userId: notifUserId,
         notificationsConsolidated: notifications.length
       })
     }
+
+    console.log('Summary notifications sent successfully:', results.length, 'users processed')
 
     return new Response(
       JSON.stringify({ success: true, results }),
