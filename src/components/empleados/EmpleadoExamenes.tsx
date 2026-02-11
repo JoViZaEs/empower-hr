@@ -237,27 +237,33 @@ export function EmpleadoExamenes({ employeeId }: EmpleadoExamenesProps) {
                               </a>
                             </DropdownMenuItem>
                           )}
-                          <DropdownMenuItem onClick={() => handleEdit(exam)}>
-                            <FileEdit className="mr-2 h-4 w-4" />
-                            Editar
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleAddResult(exam)}>
-                            <ClipboardCheck className="mr-2 h-4 w-4" />
-                            Registrar resultado
-                          </DropdownMenuItem>
+                          {exam.status !== "vigente" && (
+                            <DropdownMenuItem onClick={() => handleEdit(exam)}>
+                              <FileEdit className="mr-2 h-4 w-4" />
+                              Editar
+                            </DropdownMenuItem>
+                          )}
+                          {!exam.result && exam.status !== "vigente" && (
+                            <DropdownMenuItem onClick={() => handleAddResult(exam)}>
+                              <ClipboardCheck className="mr-2 h-4 w-4" />
+                              Registrar resultado
+                            </DropdownMenuItem>
+                          )}
                           {exam.result && (
                             <DropdownMenuItem onClick={() => handleCreateVigilancia(exam)}>
                               <AlertTriangle className="mr-2 h-4 w-4" />
                               Crear vigilancia
                             </DropdownMenuItem>
                           )}
-                          <DropdownMenuItem 
-                            onClick={() => handleDelete(exam)}
-                            className="text-destructive"
-                          >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Eliminar
-                          </DropdownMenuItem>
+                          {exam.status !== "vigente" && (
+                            <DropdownMenuItem 
+                              onClick={() => handleDelete(exam)}
+                              className="text-destructive"
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Eliminar
+                            </DropdownMenuItem>
+                          )}
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>
