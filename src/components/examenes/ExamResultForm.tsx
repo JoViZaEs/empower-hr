@@ -41,6 +41,7 @@ const resultFormSchema = z.object({
   observations: z.string().optional(),
   create_vigilancia: z.boolean().optional(),
   vigilancia_type_id: z.string().optional(),
+  vigilancia_follow_up_date: z.string().optional(),
 });
 
 type ResultFormValues = z.infer<typeof resultFormSchema>;
@@ -49,7 +50,6 @@ interface ExamResultFormProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   exam: Tables<"exams">;
-  onVigilanciaCreate?: (examId: string, employeeId: string, vigilanciaTypeId?: string) => void;
 }
 
 const RESULT_OPTIONS = [
@@ -65,7 +65,6 @@ export function ExamResultForm({
   open,
   onOpenChange,
   exam,
-  onVigilanciaCreate,
 }: ExamResultFormProps) {
   const queryClient = useQueryClient();
   const [file, setFile] = useState<File | null>(null);
@@ -94,6 +93,7 @@ export function ExamResultForm({
       observations: exam.observations || "",
       create_vigilancia: false,
       vigilancia_type_id: "",
+      vigilancia_follow_up_date: "",
     },
   });
 
@@ -160,16 +160,51 @@ export function ExamResultForm({
 
       if (error) throw error;
 
+      // Auto-create vigilancia if requested
+      if (values.create_vigilancia && values.vigilancia_type_id) {
+        const selectedType = vigilanciaTypes?.find(t => t.id === values.vigilancia_type_id);
+        if (selectedType) {
+          const { data: userData } = await supabase.auth.getUser();
+          if (!userData.user) throw new Error("Usuario no autenticado");
+
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("tenant_id")
+            .eq("user_id", userData.user.id)
+            .single();
+
+          if (!profile?.tenant_id) throw new Error("Tenant no encontrado");
+
+          const { error: vigError } = await supabase.from("vigilancias").insert({
+            employee_id: exam.employee_id,
+            tenant_id: profile.tenant_id,
+            vigilancia_type: selectedType.name,
+            diagnosis: `Seguimiento por resultado: ${values.result}`,
+            start_date: values.exam_date,
+            follow_up_date: values.vigilancia_follow_up_date || null,
+            restrictions: null,
+            recommendations: values.observations || null,
+            status: "activa",
+            created_by: userData.user.id,
+          });
+
+          if (vigError) throw new Error("Resultado guardado pero error al crear vigilancia: " + vigError.message);
+        }
+      }
+
       return values;
     },
     onSuccess: (values) => {
       queryClient.invalidateQueries({ queryKey: ["exams"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-exam-stats"] });
       queryClient.invalidateQueries({ queryKey: ["employee-exams"] });
-      toast.success("Resultado registrado correctamente");
+      queryClient.invalidateQueries({ queryKey: ["vigilancias"] });
+      queryClient.invalidateQueries({ queryKey: ["employee-vigilancias"] });
 
-      if (values.create_vigilancia && onVigilanciaCreate) {
-        onVigilanciaCreate(exam.id, exam.employee_id, values.vigilancia_type_id);
+      if (values.create_vigilancia && values.vigilancia_type_id) {
+        toast.success("Resultado registrado y vigilancia creada correctamente");
+      } else {
+        toast.success("Resultado registrado correctamente");
       }
 
       setFile(null);
@@ -259,33 +294,48 @@ export function ExamResultForm({
                       )}
                     />
                     {createVigilancia && (
-                      <FormField
-                        control={form.control}
-                        name="vigilancia_type_id"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Tipo de Vigilancia</FormLabel>
-                            <Select
-                              onValueChange={field.onChange}
-                              value={field.value}
-                            >
+                      <>
+                        <FormField
+                          control={form.control}
+                          name="vigilancia_type_id"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Tipo de Vigilancia</FormLabel>
+                              <Select
+                                onValueChange={field.onChange}
+                                value={field.value}
+                              >
+                                <FormControl>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Seleccione el tipo" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  {vigilanciaTypes?.map((type) => (
+                                    <SelectItem key={type.id} value={type.id}>
+                                      {type.name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="vigilancia_follow_up_date"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Próximo Seguimiento</FormLabel>
                               <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Seleccione el tipo" />
-                                </SelectTrigger>
+                                <Input type="date" {...field} />
                               </FormControl>
-                              <SelectContent>
-                                {vigilanciaTypes?.map((type) => (
-                                  <SelectItem key={type.id} value={type.id}>
-                                    {type.name}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </>
                     )}
                   </div>
                 </AlertDescription>
