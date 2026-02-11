@@ -1373,8 +1373,9 @@ export type Database = {
           created_at: string | null
           description: string | null
           id: string
+          is_standard: boolean | null
           name: string
-          tenant_id: string
+          tenant_id: string | null
           updated_at: string | null
         }
         Insert: {
@@ -1382,8 +1383,9 @@ export type Database = {
           created_at?: string | null
           description?: string | null
           id?: string
+          is_standard?: boolean | null
           name: string
-          tenant_id: string
+          tenant_id?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -1391,8 +1393,9 @@ export type Database = {
           created_at?: string | null
           description?: string | null
           id?: string
+          is_standard?: boolean | null
           name?: string
-          tenant_id?: string
+          tenant_id?: string | null
           updated_at?: string | null
         }
         Relationships: [
