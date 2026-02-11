@@ -464,8 +464,9 @@ export function MasterDataSettings() {
           <MasterDataList
             type="vigilancia_types"
             title="Tipos de Vigilancia"
-            description="Define los tipos de vigilancia epidemiológica disponibles"
+            description="Los tipos estándar están disponibles para todos. Puedes agregar tipos personalizados."
             icon={<Activity className="h-5 w-5 text-muted-foreground" />}
+            hasStandardItems={true}
           />
         </TabsContent>
 
