@@ -162,11 +162,13 @@ export function ExamsTable({
                         <Eye className="mr-2 h-4 w-4" />
                         Ver detalles
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => onEdit(exam)}>
-                        <Edit className="mr-2 h-4 w-4" />
-                        Editar
-                      </DropdownMenuItem>
-                      {!exam.result && (
+                      {exam.status !== "vigente" && (
+                        <DropdownMenuItem onClick={() => onEdit(exam)}>
+                          <Edit className="mr-2 h-4 w-4" />
+                          Editar
+                        </DropdownMenuItem>
+                      )}
+                      {!exam.result && exam.status !== "vigente" && (
                         <DropdownMenuItem onClick={() => onAddResult(exam)}>
                           <FileText className="mr-2 h-4 w-4" />
                           Registrar resultado
@@ -195,14 +197,18 @@ export function ExamsTable({
                         <Send className="mr-2 h-4 w-4" />
                         Enviar recordatorio
                       </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        onClick={() => onDelete(exam)}
-                        className="text-destructive focus:text-destructive"
-                      >
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        Eliminar
-                      </DropdownMenuItem>
+                      {exam.status !== "vigente" && (
+                        <>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            onClick={() => onDelete(exam)}
+                            className="text-destructive focus:text-destructive"
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Eliminar
+                          </DropdownMenuItem>
+                        </>
+                      )}
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </TableCell>
