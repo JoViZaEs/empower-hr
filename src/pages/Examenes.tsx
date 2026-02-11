@@ -189,10 +189,6 @@ export default function Examenes() {
     setShowVigilanciaForm(true);
   };
 
-  const handleVigilanciaFromResult = (examId: string, employeeId: string, vigilanciaTypeId?: string) => {
-    setVigilanciaData({ examId, employeeId, vigilanciaTypeId });
-    setShowVigilanciaForm(true);
-  };
 
   const handleNewExam = () => {
     setSelectedExam(null);
@@ -275,7 +271,6 @@ export default function Examenes() {
             if (!open) setSelectedExam(null);
           }}
           exam={selectedExam}
-          onVigilanciaCreate={handleVigilanciaFromResult}
         />
       )}
 
