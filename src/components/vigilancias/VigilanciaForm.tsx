@@ -48,11 +48,13 @@ interface VigilanciaFormProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   vigilancia?: Tables<"vigilancias"> | null;
+  defaultEmployeeId?: string;
 }
 
-export function VigilanciaForm({ open, onOpenChange, vigilancia }: VigilanciaFormProps) {
+export function VigilanciaForm({ open, onOpenChange, vigilancia, defaultEmployeeId }: VigilanciaFormProps) {
   const queryClient = useQueryClient();
   const isEditing = !!vigilancia;
+  const hasDefaultEmployee = !!defaultEmployeeId;
 
   const { data: vigilanciaTypes } = useQuery({
     queryKey: ["vigilancia_types"],
@@ -96,7 +98,7 @@ export function VigilanciaForm({ open, onOpenChange, vigilancia }: VigilanciaFor
   useEffect(() => {
     if (open) {
       form.reset({
-        employee_id: vigilancia?.employee_id || "",
+        employee_id: vigilancia?.employee_id || defaultEmployeeId || "",
         vigilancia_type: vigilancia?.vigilancia_type || "",
         diagnosis: vigilancia?.diagnosis || "",
         start_date: vigilancia?.start_date || new Date().toISOString().split("T")[0],
@@ -183,7 +185,7 @@ export function VigilanciaForm({ open, onOpenChange, vigilancia }: VigilanciaFor
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Empleado</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value} disabled={isEditing}>
+                  <Select onValueChange={field.onChange} value={field.value} disabled={isEditing || hasDefaultEmployee}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Seleccione un empleado" />
