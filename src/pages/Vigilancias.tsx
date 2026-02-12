@@ -1,58 +1,160 @@
+import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
-import { Plus, ShieldCheck, Users, AlertTriangle, CheckCircle } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Plus, ShieldCheck, Users, AlertTriangle, CheckCircle, Loader2, Download } from "lucide-react";
+import { toast } from "sonner";
+import { format } from "date-fns";
+import * as XLSX from "xlsx";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import type { Tables } from "@/integrations/supabase/types";
 
-const vigilances = [
-  {
-    id: "1",
-    name: "Riesgo Cardiovascular",
-    description: "Control periódico para empleados con factores de riesgo cardiovascular",
-    totalEmployees: 45,
-    compliant: 38,
-    pending: 5,
-    expired: 2,
-    frequency: "Anual",
-  },
-  {
-    id: "2",
-    name: "Conservación Auditiva",
-    description: "Seguimiento a empleados expuestos a ruido ocupacional",
-    totalEmployees: 28,
-    compliant: 25,
-    pending: 2,
-    expired: 1,
-    frequency: "Semestral",
-  },
-  {
-    id: "3",
-    name: "Osteomuscular",
-    description: "Prevención de lesiones musculoesqueléticas",
-    totalEmployees: 67,
-    compliant: 60,
-    pending: 7,
-    expired: 0,
-    frequency: "Anual",
-  },
-  {
-    id: "4",
-    name: "Riesgo Químico",
-    description: "Control de exposición a sustancias químicas",
-    totalEmployees: 15,
-    compliant: 12,
-    pending: 3,
-    expired: 0,
-    frequency: "Semestral",
-  },
-];
+import { VigilanciaForm } from "@/components/vigilancias/VigilanciaForm";
+import { VigilanciaDetailDialog } from "@/components/vigilancias/VigilanciaDetailDialog";
+import { VigilanciasTable } from "@/components/vigilancias/VigilanciasTable";
+
+interface VigilanciaWithEmployee extends Tables<"vigilancias"> {
+  employees: {
+    first_name: string;
+    last_name: string;
+    document_number: string;
+  } | null;
+}
 
 export default function Vigilancias() {
+  const queryClient = useQueryClient();
+  const [activeTab, setActiveTab] = useState("all");
+  const [showForm, setShowForm] = useState(false);
+  const [showDetail, setShowDetail] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [selected, setSelected] = useState<VigilanciaWithEmployee | null>(null);
+
+  // Fetch vigilancias
+  const { data: vigilancias, isLoading } = useQuery({
+    queryKey: ["vigilancias", activeTab],
+    queryFn: async () => {
+      let query = supabase
+        .from("vigilancias")
+        .select(`*, employees(first_name, last_name, document_number)`)
+        .order("start_date", { ascending: false });
+
+      if (activeTab !== "all") {
+        query = query.eq("status", activeTab as "activa" | "inactiva" | "vencida");
+      }
+
+      const { data, error } = await query;
+      if (error) throw error;
+      return data as VigilanciaWithEmployee[];
+    },
+  });
+
+  // Stats
+  const allVigilancias = vigilancias || [];
+  const activeCount = allVigilancias.filter((v) => v.status === "activa").length;
+  const inactiveCount = allVigilancias.filter((v) => v.status === "inactiva").length;
+  const expiredCount = allVigilancias.filter((v) => v.status === "vencida").length;
+  // For "all" tab, compute from all; for filtered tabs use current list length
+  const totalPrograms = activeTab === "all" ? allVigilancias.length : allVigilancias.length;
+
+  // Fetch all for stats when on filtered tab
+  const { data: allForStats } = useQuery({
+    queryKey: ["vigilancias-stats"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("vigilancias")
+        .select("status");
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const statsData = allForStats || allVigilancias;
+  const statsActive = statsData.filter((v) => v.status === "activa").length;
+  const statsInactive = statsData.filter((v) => v.status === "inactiva").length;
+  const statsExpired = statsData.filter((v) => v.status === "vencida").length;
+
+  // Delete mutation
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("vigilancias").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["vigilancias"] });
+      toast.success("Vigilancia eliminada correctamente");
+      setShowDeleteDialog(false);
+      setSelected(null);
+    },
+    onError: (error) => {
+      toast.error("Error al eliminar: " + error.message);
+    },
+  });
+
+  // Change status mutation
+  const statusMutation = useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: string }) => {
+      const { error } = await supabase
+        .from("vigilancias")
+        .update({ status: status as any })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["vigilancias"] });
+      toast.success("Estado actualizado correctamente");
+    },
+    onError: (error) => {
+      toast.error("Error al cambiar estado: " + error.message);
+    },
+  });
+
+  // Export
+  const handleExport = () => {
+    if (!allVigilancias.length) {
+      toast.error("No hay datos para exportar");
+      return;
+    }
+    const exportData = allVigilancias.map((v) => ({
+      Empleado: v.employees ? `${v.employees.first_name} ${v.employees.last_name}` : "",
+      "Tipo de Vigilancia": v.vigilancia_type,
+      Diagnóstico: v.diagnosis || "",
+      "Fecha Inicio": v.start_date ? format(new Date(v.start_date), "dd/MM/yyyy") : "",
+      "Próximo Seguimiento": v.follow_up_date ? format(new Date(v.follow_up_date), "dd/MM/yyyy") : "",
+      Estado: v.status || "",
+      Restricciones: v.restrictions || "",
+      Recomendaciones: v.recommendations || "",
+    }));
+    const ws = XLSX.utils.json_to_sheet(exportData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Vigilancias");
+    XLSX.writeFile(wb, `vigilancias_${format(new Date(), "yyyy-MM-dd")}.xlsx`);
+    toast.success("Archivo exportado correctamente");
+  };
+
+  // Handlers
+  const handleNew = () => { setSelected(null); setShowForm(true); };
+  const handleEdit = (v: VigilanciaWithEmployee) => { setSelected(v); setShowForm(true); };
+  const handleViewDetails = (v: VigilanciaWithEmployee) => { setSelected(v); setShowDetail(true); };
+  const handleDelete = (v: VigilanciaWithEmployee) => { setSelected(v); setShowDeleteDialog(true); };
+  const handleChangeStatus = (v: VigilanciaWithEmployee, status: "activa" | "inactiva" | "vencida") => {
+    statusMutation.mutate({ id: v.id, status });
+  };
+
   return (
     <MainLayout>
       <div className="animate-fade-in">
-        {/* Page header */}
+        {/* Header */}
         <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-2xl font-bold">Vigilancias Epidemiológicas</h1>
@@ -60,21 +162,27 @@ export default function Vigilancias() {
               Control y seguimiento de programas de vigilancia en salud
             </p>
           </div>
-          <Button className="gradient-primary">
-            <Plus className="mr-2 h-4 w-4" />
-            Nueva Vigilancia
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={handleExport}>
+              <Download className="mr-2 h-4 w-4" />
+              Exportar
+            </Button>
+            <Button className="gradient-primary" onClick={handleNew}>
+              <Plus className="mr-2 h-4 w-4" />
+              Nueva Vigilancia
+            </Button>
+          </div>
         </div>
 
-        {/* Stats summary */}
+        {/* Stats */}
         <div className="mb-8 grid gap-4 sm:grid-cols-4">
           <div className="flex items-center gap-4 rounded-xl border border-border bg-card p-4 shadow-card">
             <div className="rounded-lg bg-primary/10 p-3 text-primary">
               <ShieldCheck className="h-6 w-6" />
             </div>
             <div>
-              <p className="text-2xl font-bold">4</p>
-              <p className="text-sm text-muted-foreground">Programas activos</p>
+              <p className="text-2xl font-bold">{statsData.length}</p>
+              <p className="text-sm text-muted-foreground">Total registros</p>
             </div>
           </div>
           <div className="flex items-center gap-4 rounded-xl border border-border bg-card p-4 shadow-card">
@@ -82,8 +190,8 @@ export default function Vigilancias() {
               <CheckCircle className="h-6 w-6" />
             </div>
             <div>
-              <p className="text-2xl font-bold">135</p>
-              <p className="text-sm text-muted-foreground">Al día</p>
+              <p className="text-2xl font-bold">{statsActive}</p>
+              <p className="text-sm text-muted-foreground">Activas</p>
             </div>
           </div>
           <div className="flex items-center gap-4 rounded-xl border border-border bg-card p-4 shadow-card">
@@ -91,8 +199,8 @@ export default function Vigilancias() {
               <Users className="h-6 w-6" />
             </div>
             <div>
-              <p className="text-2xl font-bold">17</p>
-              <p className="text-sm text-muted-foreground">Pendientes</p>
+              <p className="text-2xl font-bold">{statsInactive}</p>
+              <p className="text-sm text-muted-foreground">Inactivas</p>
             </div>
           </div>
           <div className="flex items-center gap-4 rounded-xl border border-border bg-card p-4 shadow-card">
@@ -100,69 +208,76 @@ export default function Vigilancias() {
               <AlertTriangle className="h-6 w-6" />
             </div>
             <div>
-              <p className="text-2xl font-bold">3</p>
-              <p className="text-sm text-muted-foreground">Vencidos</p>
+              <p className="text-2xl font-bold">{statsExpired}</p>
+              <p className="text-sm text-muted-foreground">Vencidas</p>
             </div>
           </div>
         </div>
 
-        {/* Vigilance cards */}
-        <div className="grid gap-6 md:grid-cols-2">
-          {vigilances.map((vigilance) => {
-            const complianceRate = Math.round((vigilance.compliant / vigilance.totalEmployees) * 100);
-            
-            return (
-              <Card key={vigilance.id} className="card-interactive">
-                <CardHeader>
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <CardTitle className="text-lg">{vigilance.name}</CardTitle>
-                      <CardDescription className="mt-1">{vigilance.description}</CardDescription>
-                    </div>
-                    <Badge variant="outline">{vigilance.frequency}</Badge>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="mb-4">
-                    <div className="mb-2 flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">Cumplimiento</span>
-                      <span className="font-medium">{complianceRate}%</span>
-                    </div>
-                    <Progress value={complianceRate} className="h-2" />
-                  </div>
-                  
-                  <div className="flex items-center gap-4 text-sm">
-                    <div className="flex items-center gap-1.5">
-                      <div className="h-2 w-2 rounded-full bg-success" />
-                      <span className="text-muted-foreground">Al día:</span>
-                      <span className="font-medium">{vigilance.compliant}</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <div className="h-2 w-2 rounded-full bg-warning" />
-                      <span className="text-muted-foreground">Pendientes:</span>
-                      <span className="font-medium">{vigilance.pending}</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <div className="h-2 w-2 rounded-full bg-destructive" />
-                      <span className="text-muted-foreground">Vencidos:</span>
-                      <span className="font-medium">{vigilance.expired}</span>
-                    </div>
-                  </div>
-                  
-                  <div className="mt-4 flex gap-2">
-                    <Button variant="outline" size="sm" className="flex-1">
-                      Ver empleados
-                    </Button>
-                    <Button size="sm" className="flex-1">
-                      Gestionar
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
+        {/* Tabs & Table */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+          <TabsList>
+            <TabsTrigger value="all">Todas</TabsTrigger>
+            <TabsTrigger value="activa">Activas</TabsTrigger>
+            <TabsTrigger value="inactiva">Inactivas</TabsTrigger>
+            <TabsTrigger value="vencida">Vencidas</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value={activeTab}>
+            {isLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              </div>
+            ) : (
+              <VigilanciasTable
+                vigilancias={allVigilancias}
+                onViewDetails={handleViewDetails}
+                onEdit={handleEdit}
+                onDelete={handleDelete}
+                onChangeStatus={handleChangeStatus}
+              />
+            )}
+          </TabsContent>
+        </Tabs>
       </div>
+
+      {/* Modals */}
+      <VigilanciaForm
+        open={showForm}
+        onOpenChange={(open) => {
+          setShowForm(open);
+          if (!open) setSelected(null);
+        }}
+        vigilancia={selected}
+      />
+
+      <VigilanciaDetailDialog
+        open={showDetail}
+        onOpenChange={setShowDetail}
+        vigilancia={selected}
+      />
+
+      {/* Delete confirmation */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar vigilancia?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción no se puede deshacer. La vigilancia será eliminada permanentemente.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => selected && deleteMutation.mutate(selected.id)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Eliminar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </MainLayout>
   );
 }
