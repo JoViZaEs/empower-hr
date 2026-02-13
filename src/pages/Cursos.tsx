@@ -1,205 +1,255 @@
+import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { MainLayout } from "@/components/layout/MainLayout";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Plus, GraduationCap, AlertTriangle, CheckCircle, Clock, Loader2, Download } from "lucide-react";
+import { toast } from "sonner";
+import { format } from "date-fns";
+import * as XLSX from "xlsx";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { GraduationCap, Plus, AlertTriangle, CheckCircle, Clock, Search, Filter } from "lucide-react";
-import { Input } from "@/components/ui/input";
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import type { Tables } from "@/integrations/supabase/types";
 
-const cursosData = [
-  {
-    id: 1,
-    empleado: "Carlos Mendoza",
-    curso: "Trabajo en Alturas",
-    entidad: "SENA",
-    fechaObtencion: "2024-03-15",
-    fechaVencimiento: "2025-03-15",
-    estado: "vigente",
-  },
-  {
-    id: 2,
-    empleado: "María López",
-    curso: "Manipulación de Alimentos",
-    entidad: "Secretaría de Salud",
-    fechaObtencion: "2024-01-10",
-    fechaVencimiento: "2025-01-10",
-    estado: "por_vencer",
-  },
-  {
-    id: 3,
-    empleado: "Juan Rodríguez",
-    curso: "Trabajo en Alturas",
-    entidad: "SENA",
-    fechaObtencion: "2023-06-20",
-    fechaVencimiento: "2024-06-20",
-    estado: "vencido",
-  },
-  {
-    id: 4,
-    empleado: "Ana García",
-    curso: "Primeros Auxilios",
-    entidad: "Cruz Roja",
-    fechaObtencion: "2024-08-01",
-    fechaVencimiento: "2026-08-01",
-    estado: "vigente",
-  },
-  {
-    id: 5,
-    empleado: "Pedro Sánchez",
-    curso: "Manejo de Extintores",
-    entidad: "Bomberos",
-    fechaObtencion: "2024-02-15",
-    fechaVencimiento: "2025-02-15",
-    estado: "por_vencer",
-  },
-];
+import { CursoForm } from "@/components/cursos/CursoForm";
+import { CursoDetailDialog } from "@/components/cursos/CursoDetailDialog";
+import { CursosTable } from "@/components/cursos/CursosTable";
 
-const estadoBadge = {
-  vigente: { label: "Vigente", variant: "default" as const, icon: CheckCircle },
-  por_vencer: { label: "Por Vencer", variant: "warning" as const, icon: Clock },
-  vencido: { label: "Vencido", variant: "destructive" as const, icon: AlertTriangle },
-};
+interface CourseWithEmployee extends Tables<"courses"> {
+  employees: {
+    first_name: string;
+    last_name: string;
+    document_number: string;
+  } | null;
+}
 
 export default function Cursos() {
-  const stats = {
-    total: cursosData.length,
-    vigentes: cursosData.filter((c) => c.estado === "vigente").length,
-    porVencer: cursosData.filter((c) => c.estado === "por_vencer").length,
-    vencidos: cursosData.filter((c) => c.estado === "vencido").length,
+  const queryClient = useQueryClient();
+  const [activeTab, setActiveTab] = useState("all");
+  const [showForm, setShowForm] = useState(false);
+  const [showDetail, setShowDetail] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [selected, setSelected] = useState<CourseWithEmployee | null>(null);
+
+  // Fetch courses
+  const { data: courses, isLoading } = useQuery({
+    queryKey: ["courses", activeTab],
+    queryFn: async () => {
+      let query = supabase
+        .from("courses")
+        .select(`*, employees(first_name, last_name, document_number)`)
+        .order("start_date", { ascending: false });
+
+      if (activeTab !== "all") {
+        query = query.eq("status", activeTab as any);
+      }
+
+      const { data, error } = await query;
+      if (error) throw error;
+      return data as CourseWithEmployee[];
+    },
+  });
+
+  // Stats query
+  const { data: allForStats } = useQuery({
+    queryKey: ["courses-stats"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("courses").select("status");
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const statsData = allForStats || [];
+  const statsCompleted = statsData.filter((c) => c.status === "completado").length;
+  const statsPending = statsData.filter((c) => c.status === "pendiente" || c.status === "en_progreso").length;
+  const statsExpired = statsData.filter((c) => c.status === "vencido").length;
+
+  const allCourses = courses || [];
+
+  // Delete mutation
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("courses").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["courses"] });
+      queryClient.invalidateQueries({ queryKey: ["courses-stats"] });
+      toast.success("Curso eliminado correctamente");
+      setShowDeleteDialog(false);
+      setSelected(null);
+    },
+    onError: (error) => {
+      toast.error("Error al eliminar: " + error.message);
+    },
+  });
+
+  // Export
+  const handleExport = () => {
+    if (!allCourses.length) {
+      toast.error("No hay datos para exportar");
+      return;
+    }
+    const exportData = allCourses.map((c) => ({
+      Empleado: c.employees ? `${c.employees.first_name} ${c.employees.last_name}` : "",
+      Curso: c.course_name,
+      Proveedor: c.provider || "",
+      "Fecha Obtención": c.start_date ? format(new Date(c.start_date), "dd/MM/yyyy") : "",
+      Vencimiento: c.expiry_date ? format(new Date(c.expiry_date), "dd/MM/yyyy") : "",
+      "Duración (h)": c.duration_hours || "",
+      Calificación: c.grade || "",
+      Estado: c.status || "",
+    }));
+    const ws = XLSX.utils.json_to_sheet(exportData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Cursos");
+    XLSX.writeFile(wb, `cursos_${format(new Date(), "yyyy-MM-dd")}.xlsx`);
+    toast.success("Archivo exportado correctamente");
   };
+
+  // Handlers
+  const handleNew = () => { setSelected(null); setShowForm(true); };
+  const handleEdit = (c: CourseWithEmployee) => { setSelected(c); setShowForm(true); };
+  const handleViewDetails = (c: CourseWithEmployee) => { setSelected(c); setShowDetail(true); };
+  const handleDelete = (c: CourseWithEmployee) => { setSelected(c); setShowDeleteDialog(true); };
 
   return (
     <MainLayout>
-      <div className="space-y-6">
+      <div className="animate-fade-in">
         {/* Header */}
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-foreground">Cursos y Certificaciones</h1>
-            <p className="text-muted-foreground">
+            <h1 className="text-2xl font-bold">Cursos y Certificaciones</h1>
+            <p className="mt-1 text-muted-foreground">
               Control de cursos obligatorios y fechas de renovación
             </p>
           </div>
-          <Button className="gap-2">
-            <Plus className="h-4 w-4" />
-            Registrar Curso
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={handleExport}>
+              <Download className="mr-2 h-4 w-4" />
+              Exportar
+            </Button>
+            <Button className="gradient-primary" onClick={handleNew}>
+              <Plus className="mr-2 h-4 w-4" />
+              Registrar Curso
+            </Button>
+          </div>
         </div>
 
         {/* Stats */}
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <Card>
-            <CardContent className="flex items-center gap-4 p-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
-                <GraduationCap className="h-6 w-6 text-primary" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{stats.total}</p>
-                <p className="text-sm text-muted-foreground">Total Registros</p>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="flex items-center gap-4 p-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-success/10">
-                <CheckCircle className="h-6 w-6 text-success" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{stats.vigentes}</p>
-                <p className="text-sm text-muted-foreground">Vigentes</p>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="flex items-center gap-4 p-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-warning/10">
-                <Clock className="h-6 w-6 text-warning" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{stats.porVencer}</p>
-                <p className="text-sm text-muted-foreground">Por Vencer</p>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="flex items-center gap-4 p-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-destructive/10">
-                <AlertTriangle className="h-6 w-6 text-destructive" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{stats.vencidos}</p>
-                <p className="text-sm text-muted-foreground">Vencidos</p>
-              </div>
-            </CardContent>
-          </Card>
+        <div className="mb-8 grid gap-4 sm:grid-cols-4">
+          <div className="flex items-center gap-4 rounded-xl border border-border bg-card p-4 shadow-card">
+            <div className="rounded-lg bg-primary/10 p-3 text-primary">
+              <GraduationCap className="h-6 w-6" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold">{statsData.length}</p>
+              <p className="text-sm text-muted-foreground">Total registros</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-4 rounded-xl border border-border bg-card p-4 shadow-card">
+            <div className="rounded-lg bg-success/10 p-3 text-success">
+              <CheckCircle className="h-6 w-6" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold">{statsCompleted}</p>
+              <p className="text-sm text-muted-foreground">Completados</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-4 rounded-xl border border-border bg-card p-4 shadow-card">
+            <div className="rounded-lg bg-warning/10 p-3 text-warning">
+              <Clock className="h-6 w-6" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold">{statsPending}</p>
+              <p className="text-sm text-muted-foreground">Pendientes / En progreso</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-4 rounded-xl border border-border bg-card p-4 shadow-card">
+            <div className="rounded-lg bg-destructive/10 p-3 text-destructive">
+              <AlertTriangle className="h-6 w-6" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold">{statsExpired}</p>
+              <p className="text-sm text-muted-foreground">Vencidos</p>
+            </div>
+          </div>
         </div>
 
-        {/* Table */}
-        <Card>
-          <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <CardTitle>Registro de Cursos</CardTitle>
-            <div className="flex gap-2">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input placeholder="Buscar..." className="pl-9 w-64" />
+        {/* Tabs & Table */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+          <TabsList>
+            <TabsTrigger value="all">Todos</TabsTrigger>
+            <TabsTrigger value="completado">Completados</TabsTrigger>
+            <TabsTrigger value="pendiente">Pendientes</TabsTrigger>
+            <TabsTrigger value="en_progreso">En progreso</TabsTrigger>
+            <TabsTrigger value="vencido">Vencidos</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value={activeTab}>
+            {isLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
               </div>
-              <Button variant="outline" size="icon">
-                <Filter className="h-4 w-4" />
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Empleado</TableHead>
-                  <TableHead>Curso</TableHead>
-                  <TableHead>Entidad</TableHead>
-                  <TableHead>Fecha Obtención</TableHead>
-                  <TableHead>Vencimiento</TableHead>
-                  <TableHead>Estado</TableHead>
-                  <TableHead className="text-right">Acciones</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {cursosData.map((curso) => {
-                  const estado = estadoBadge[curso.estado];
-                  const IconEstado = estado.icon;
-                  return (
-                    <TableRow key={curso.id}>
-                      <TableCell className="font-medium">{curso.empleado}</TableCell>
-                      <TableCell>{curso.curso}</TableCell>
-                      <TableCell>{curso.entidad}</TableCell>
-                      <TableCell>{new Date(curso.fechaObtencion).toLocaleDateString("es-CO")}</TableCell>
-                      <TableCell>{new Date(curso.fechaVencimiento).toLocaleDateString("es-CO")}</TableCell>
-                      <TableCell>
-                        <Badge variant={estado.variant} className="gap-1">
-                          <IconEstado className="h-3 w-3" />
-                          {estado.label}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button variant="ghost" size="sm">
-                          Ver
-                        </Button>
-                        <Button variant="ghost" size="sm">
-                          Renovar
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+            ) : (
+              <CursosTable
+                courses={allCourses}
+                onViewDetails={handleViewDetails}
+                onEdit={handleEdit}
+                onDelete={handleDelete}
+              />
+            )}
+          </TabsContent>
+        </Tabs>
       </div>
+
+      {/* Modals */}
+      <CursoForm
+        open={showForm}
+        onOpenChange={(open) => {
+          setShowForm(open);
+          if (!open) setSelected(null);
+        }}
+        curso={selected}
+      />
+
+      <CursoDetailDialog
+        open={showDetail}
+        onOpenChange={setShowDetail}
+        curso={selected}
+      />
+
+      {/* Delete confirmation */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar curso?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción no se puede deshacer. El registro del curso será eliminado permanentemente.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => selected && deleteMutation.mutate(selected.id)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Eliminar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </MainLayout>
   );
 }
