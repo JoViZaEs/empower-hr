@@ -19,56 +19,121 @@ import { supabase } from "@/integrations/supabase/client";
 import { startOfMonth, subMonths } from "date-fns";
 
 export default function Dashboard() {
-  // Query for employees stats
   const { data: employeeStats } = useQuery({
     queryKey: ["dashboard-employee-stats"],
     queryFn: async () => {
       const startOfCurrentMonth = startOfMonth(new Date()).toISOString();
       const startOfLastMonth = startOfMonth(subMonths(new Date(), 1)).toISOString();
-      
       const { data: employees, error } = await supabase
         .from("employees")
         .select("id, active, hire_date, created_at");
-      
       if (error) throw error;
-      
       const activeEmployees = employees?.filter(e => e.active) || [];
       const totalActive = activeEmployees.length;
-      
       const newThisMonth = activeEmployees.filter(e => {
         const hireDate = e.hire_date || e.created_at;
         return hireDate && hireDate >= startOfCurrentMonth;
       }).length;
-      
       const newLastMonth = activeEmployees.filter(e => {
         const hireDate = e.hire_date || e.created_at;
         return hireDate && hireDate >= startOfLastMonth && hireDate < startOfCurrentMonth;
       }).length;
-      
       const trend = newLastMonth > 0 
         ? Math.round(((newThisMonth - newLastMonth) / newLastMonth) * 100)
         : newThisMonth > 0 ? 100 : 0;
-      
       return { totalActive, newThisMonth, trend, trendIsPositive: trend >= 0 };
     },
   });
 
-  // Query for exams stats
   const { data: examStats } = useQuery({
     queryKey: ["dashboard-exam-stats"],
     queryFn: async () => {
       const { data: exams, error } = await supabase
         .from("exams")
         .select("id, status, employee_id");
-      
       if (error) throw error;
-      
       const total = exams?.length || 0;
       const upToDate = exams?.filter(e => e.status === "vigente").length || 0;
-      const pending = exams?.filter(e => e.status === "pendiente" || e.status === "vencido").length || 0;
       const percentage = total > 0 ? Math.round((upToDate / total) * 100) : 0;
-      
-      return { total, upToDate, pending, percentage };
+      return { total, upToDate, percentage };
+    },
+  });
+
+  const { data: courseStats } = useQuery({
+    queryKey: ["dashboard-course-stats"],
+    queryFn: async () => {
+      const { data: courses, error } = await supabase
+        .from("courses")
+        .select("id, status, expiry_date");
+      if (error) throw error;
+      const total = courses?.length || 0;
+      const completed = courses?.filter(c => c.status === "completado").length || 0;
+      const expired = courses?.filter(c => c.status === "vencido").length || 0;
+      const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
+      return { total, completed, expired, percentage };
+    },
+  });
+
+  const { data: vigilanciaStats } = useQuery({
+    queryKey: ["dashboard-vigilancia-stats"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("vigilancias")
+        .select("id, status");
+      if (error) throw error;
+      const active = data?.filter(v => v.status === "activa").length || 0;
+      const expired = data?.filter(v => v.status === "vencida").length || 0;
+      return { total: data?.length || 0, active, expired };
+    },
+  });
+
+  const { data: perfEvalStats } = useQuery({
+    queryKey: ["dashboard-perf-eval-stats"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("performance_evaluations")
+        .select("id, status");
+      if (error) throw error;
+      const pending = data?.filter(e => e.status === "pendiente" || e.status === "en_proceso").length || 0;
+      return { total: data?.length || 0, pending };
+    },
+  });
+
+  const { data: compEvalStats } = useQuery({
+    queryKey: ["dashboard-comp-eval-stats"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("competency_evaluations")
+        .select("id, gap");
+      if (error) throw error;
+      const withGap = data?.filter(e => e.gap && e.gap > 0).length || 0;
+      return { total: data?.length || 0, withGap };
+    },
+  });
+
+  const { data: commStats } = useQuery({
+    queryKey: ["dashboard-comm-stats"],
+    queryFn: async () => {
+      const startOfCurrentMonth = startOfMonth(new Date()).toISOString();
+      const { data, error } = await supabase
+        .from("communications")
+        .select("id, status, sent_at");
+      if (error) throw error;
+      const sentThisMonth = data?.filter(c => c.status === "enviado" && c.sent_at && c.sent_at >= startOfCurrentMonth).length || 0;
+      return { total: data?.length || 0, sentThisMonth };
+    },
+  });
+
+  const { data: notificationStats } = useQuery({
+    queryKey: ["dashboard-notification-stats"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("notifications")
+        .select("id, read, type");
+      if (error) throw error;
+      const unread = data?.filter(n => !n.read).length || 0;
+      const urgent = data?.filter(n => !n.read && n.type === "warning").length || 0;
+      return { unread, urgent };
     },
   });
 
@@ -100,46 +165,46 @@ export default function Dashboard() {
             variant={examStats && examStats.percentage >= 80 ? "success" : "warning"}
           />
           <StatCard
-            title="Cursos Vigentes"
-            value="87%"
-            subtitle="8 por renovar"
+            title="Cursos Completados"
+            value={courseStats ? `${courseStats.percentage}%` : "-"}
+            subtitle={courseStats ? `${courseStats.expired} vencidos` : "Cargando..."}
             icon={GraduationCap}
-            variant="success"
+            variant={courseStats && courseStats.percentage >= 80 ? "success" : "warning"}
           />
           <StatCard
             title="Alertas Pendientes"
-            value={7}
-            subtitle="3 urgentes"
+            value={notificationStats?.unread ?? "-"}
+            subtitle={`${notificationStats?.urgent ?? 0} urgentes`}
             icon={ShieldCheck}
-            variant="warning"
+            variant={notificationStats && notificationStats.urgent > 0 ? "warning" : "default"}
           />
         </div>
 
         {/* Stats grid - Row 2 */}
         <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard
-            title="Firmas Pendientes"
-            value={8}
-            subtitle="De reinducción SST"
+            title="Vigilancias Activas"
+            value={vigilanciaStats?.active ?? "-"}
+            subtitle={`${vigilanciaStats?.expired ?? 0} vencidas`}
             icon={FileSignature}
-            variant="danger"
+            variant={vigilanciaStats && vigilanciaStats.expired > 0 ? "danger" : "default"}
           />
           <StatCard
             title="Eval. Desempeño"
-            value={4}
-            subtitle="En proceso este período"
+            value={perfEvalStats?.pending ?? "-"}
+            subtitle={`${perfEvalStats?.total ?? 0} en total`}
             icon={ClipboardCheck}
           />
           <StatCard
             title="Brechas Competencias"
-            value={3}
+            value={compEvalStats?.withGap ?? "-"}
             subtitle="Requieren atención"
             icon={Target}
-            variant="warning"
+            variant={compEvalStats && compEvalStats.withGap > 0 ? "warning" : "default"}
           />
           <StatCard
             title="Comunicaciones"
-            value={12}
+            value={commStats?.sentThisMonth ?? "-"}
             subtitle="Enviadas este mes"
             icon={Mail}
           />
