@@ -10,9 +10,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Plus, Pencil, FileText, Briefcase, Building2, Loader2, Activity, Stethoscope, Lock, GraduationCap } from "lucide-react";
+import { Plus, Pencil, FileText, Briefcase, Building2, Loader2, Activity, Stethoscope, Lock, GraduationCap, BookOpen } from "lucide-react";
 
-type MasterDataType = "document_types" | "positions" | "departments" | "vigilancia_types" | "exam_types" | "course_providers";
+type MasterDataType = "document_types" | "positions" | "departments" | "vigilancia_types" | "exam_types" | "course_providers" | "course_types";
 
 interface MasterDataItem {
   id: string;
@@ -98,6 +98,12 @@ function MasterDataForm({ type, item, onSuccess, onCancel }: MasterDataFormProps
             .update({ name, active, description })
             .eq("id", item.id);
           if (error) throw error;
+        } else if (type === "course_types") {
+          const { error } = await supabase
+            .from("course_types" as any)
+            .update({ name, active, description })
+            .eq("id", item.id);
+          if (error) throw error;
         }
         toast.success("Registro actualizado");
       } else {
@@ -129,6 +135,11 @@ function MasterDataForm({ type, item, onSuccess, onCancel }: MasterDataFormProps
         } else if (type === "course_providers") {
           const { error } = await supabase
             .from("course_providers" as any)
+            .insert([{ name, active, description, tenant_id: profile.tenant_id, is_standard: false }]);
+          if (error) throw error;
+        } else if (type === "course_types") {
+          const { error } = await supabase
+            .from("course_types" as any)
             .insert([{ name, active, description, tenant_id: profile.tenant_id, is_standard: false }]);
           if (error) throw error;
         }
@@ -444,7 +455,11 @@ export function MasterDataSettings() {
           </TabsTrigger>
           <TabsTrigger value="course_providers" className="flex items-center gap-2">
             <GraduationCap className="h-4 w-4" />
-            Proveedores de Cursos
+            Proveedores
+          </TabsTrigger>
+          <TabsTrigger value="course_types" className="flex items-center gap-2">
+            <BookOpen className="h-4 w-4" />
+            Tipos de Curso
           </TabsTrigger>
         </TabsList>
 
@@ -501,6 +516,16 @@ export function MasterDataSettings() {
             title="Proveedores de Cursos"
             description="Los proveedores estándar están disponibles para todos. Puedes agregar proveedores personalizados."
             icon={<GraduationCap className="h-5 w-5 text-muted-foreground" />}
+            hasStandardItems={true}
+          />
+        </TabsContent>
+
+        <TabsContent value="course_types">
+          <MasterDataList
+            type={"course_types" as MasterDataType}
+            title="Tipos de Curso"
+            description="Los tipos estándar están disponibles para todos. Puedes agregar tipos personalizados."
+            icon={<BookOpen className="h-5 w-5 text-muted-foreground" />}
             hasStandardItems={true}
           />
         </TabsContent>
