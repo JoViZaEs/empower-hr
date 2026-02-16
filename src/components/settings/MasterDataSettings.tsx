@@ -236,11 +236,7 @@ function MasterDataList({ type, title, description, icon, hasStandardItems = fal
   });
 
   const toggleActive = useMutation({
-    mutationFn: async ({ id, active, isStandard }: { id: string; active: boolean; isStandard?: boolean }) => {
-      // Don't allow toggling standard items
-      if (isStandard) {
-        throw new Error("No se pueden modificar los tipos estándar del sistema");
-      }
+    mutationFn: async ({ id, active }: { id: string; active: boolean }) => {
       const { error } = await supabase
         .from(type)
         .update({ active })
@@ -345,8 +341,9 @@ function MasterDataList({ type, title, description, icon, hasStandardItems = fal
                     <div className="flex items-center gap-3">
                       <Switch
                         checked={item.active}
-                        disabled
-                        className="opacity-50"
+                        onCheckedChange={(checked) =>
+                          toggleActive.mutate({ id: item.id, active: checked })
+                        }
                       />
                       <Button
                         variant="ghost"
@@ -392,7 +389,7 @@ function MasterDataList({ type, title, description, icon, hasStandardItems = fal
                       <Switch
                         checked={item.active}
                         onCheckedChange={(checked) =>
-                          toggleActive.mutate({ id: item.id, active: checked, isStandard: item.is_standard })
+                          toggleActive.mutate({ id: item.id, active: checked })
                         }
                       />
                       <Button
