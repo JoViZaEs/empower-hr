@@ -72,6 +72,19 @@ export function CursoForm({ open, onOpenChange, curso, defaultEmployeeId }: Curs
     },
   });
 
+  const { data: providers } = useQuery({
+    queryKey: ["course-providers-active"],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("course_providers")
+        .select("id, name")
+        .eq("active", true)
+        .order("name");
+      if (error) throw error;
+      return data as { id: string; name: string }[];
+    },
+  });
+
   const form = useForm<CursoFormValues>({
     resolver: zodResolver(cursoFormSchema),
     defaultValues: {
@@ -217,9 +230,20 @@ export function CursoForm({ open, onOpenChange, curso, defaultEmployeeId }: Curs
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Entidad / Proveedor</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Ej: SENA, Cruz Roja..." {...field} />
-                  </FormControl>
+                  <Select onValueChange={field.onChange} value={field.value || ""}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleccione un proveedor" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {providers?.map((p) => (
+                        <SelectItem key={p.id} value={p.name}>
+                          {p.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )}
