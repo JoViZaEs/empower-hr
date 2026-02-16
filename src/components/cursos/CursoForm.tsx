@@ -85,6 +85,19 @@ export function CursoForm({ open, onOpenChange, curso, defaultEmployeeId }: Curs
     },
   });
 
+  const { data: courseTypes } = useQuery({
+    queryKey: ["course-types-active"],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("course_types")
+        .select("id, name")
+        .eq("active", true)
+        .order("name");
+      if (error) throw error;
+      return data as { id: string; name: string }[];
+    },
+  });
+
   const form = useForm<CursoFormValues>({
     resolver: zodResolver(cursoFormSchema),
     defaultValues: {
@@ -215,10 +228,21 @@ export function CursoForm({ open, onOpenChange, curso, defaultEmployeeId }: Curs
               name="course_name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Nombre del Curso</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Ej: Trabajo en Alturas, Primeros Auxilios..." {...field} />
-                  </FormControl>
+                  <FormLabel>Tipo de Curso</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleccione un tipo de curso" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {courseTypes?.map((ct) => (
+                        <SelectItem key={ct.id} value={ct.name}>
+                          {ct.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )}
