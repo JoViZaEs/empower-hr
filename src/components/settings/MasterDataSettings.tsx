@@ -10,9 +10,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Plus, Pencil, FileText, Briefcase, Building2, Loader2, Activity, Stethoscope, Lock, GraduationCap, BookOpen } from "lucide-react";
+import { Plus, Pencil, FileText, Briefcase, Building2, Loader2, Activity, Stethoscope, Lock, GraduationCap, BookOpen, HardHat } from "lucide-react";
 
-type MasterDataType = "document_types" | "positions" | "departments" | "vigilancia_types" | "exam_types" | "course_providers" | "course_types";
+type MasterDataType = "document_types" | "positions" | "departments" | "vigilancia_types" | "exam_types" | "course_providers" | "course_types" | "dotacion_types";
 
 interface MasterDataItem {
   id: string;
@@ -104,6 +104,12 @@ function MasterDataForm({ type, item, onSuccess, onCancel }: MasterDataFormProps
             .update({ name, active, description })
             .eq("id", item.id);
           if (error) throw error;
+        } else if (type === "dotacion_types") {
+          const { error } = await supabase
+            .from("dotacion_types" as any)
+            .update({ name, active, description })
+            .eq("id", item.id);
+          if (error) throw error;
         }
         toast.success("Registro actualizado");
       } else {
@@ -140,6 +146,11 @@ function MasterDataForm({ type, item, onSuccess, onCancel }: MasterDataFormProps
         } else if (type === "course_types") {
           const { error } = await supabase
             .from("course_types" as any)
+            .insert([{ name, active, description, tenant_id: profile.tenant_id, is_standard: false }]);
+          if (error) throw error;
+        } else if (type === "dotacion_types") {
+          const { error } = await supabase
+            .from("dotacion_types" as any)
             .insert([{ name, active, description, tenant_id: profile.tenant_id, is_standard: false }]);
           if (error) throw error;
         }
@@ -458,6 +469,10 @@ export function MasterDataSettings() {
             <BookOpen className="h-4 w-4" />
             Tipos de Curso
           </TabsTrigger>
+          <TabsTrigger value="dotacion_types" className="flex items-center gap-2">
+            <HardHat className="h-4 w-4" />
+            Tipos de Dotación
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="document_types">
@@ -523,6 +538,16 @@ export function MasterDataSettings() {
             title="Tipos de Curso"
             description="Los tipos estándar están disponibles para todos. Puedes agregar tipos personalizados."
             icon={<BookOpen className="h-5 w-5 text-muted-foreground" />}
+            hasStandardItems={true}
+          />
+        </TabsContent>
+
+        <TabsContent value="dotacion_types">
+          <MasterDataList
+            type={"dotacion_types" as MasterDataType}
+            title="Tipos de Dotación"
+            description="Los tipos estándar están disponibles para todos. Puedes agregar tipos personalizados."
+            icon={<HardHat className="h-5 w-5 text-muted-foreground" />}
             hasStandardItems={true}
           />
         </TabsContent>
