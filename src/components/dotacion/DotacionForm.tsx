@@ -1,7 +1,4 @@
-import { useEffect } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
+import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -11,16 +8,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -29,21 +19,24 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2 } from "lucide-react";
+import { Loader2, Plus, Trash2 } from "lucide-react";
 import type { Tables } from "@/integrations/supabase/types";
 
-const dotacionFormSchema = z.object({
-  employee_id: z.string().min(1, "Seleccione un empleado"),
-  item_name: z.string().min(1, "Ingrese el nombre del elemento"),
-  item_type: z.string().optional(),
-  size: z.string().optional(),
-  quantity: z.coerce.number().min(1, "Mínimo 1"),
-  delivery_date: z.string().min(1, "Ingrese la fecha de entrega"),
-  expiry_date: z.string().optional(),
-  observations: z.string().optional(),
-});
+interface DotacionItem {
+  item_name: string;
+  item_type: string;
+  size: string;
+  quantity: number;
+  expiry_date: string;
+}
 
-type DotacionFormValues = z.infer<typeof dotacionFormSchema>;
+const emptyItem = (): DotacionItem => ({
+  item_name: "",
+  item_type: "",
+  size: "",
+  quantity: 1,
+  expiry_date: "",
+});
 
 interface DotacionFormProps {
   open: boolean;
@@ -56,6 +49,11 @@ export function DotacionForm({ open, onOpenChange, dotacion, defaultEmployeeId }
   const queryClient = useQueryClient();
   const isEditing = !!dotacion;
   const hasDefaultEmployee = !!defaultEmployeeId;
+
+  const [employeeId, setEmployeeId] = useState("");
+  const [deliveryDate, setDeliveryDate] = useState(new Date().toISOString().split("T")[0]);
+  const [observations, setObservations] = useState("");
+  const [items, setItems] = useState<DotacionItem[]>([emptyItem()]);
 
   const { data: employees } = useQuery({
     queryKey: ["employees-active"],
@@ -70,37 +68,46 @@ export function DotacionForm({ open, onOpenChange, dotacion, defaultEmployeeId }
     },
   });
 
-  const form = useForm<DotacionFormValues>({
-    resolver: zodResolver(dotacionFormSchema),
-    defaultValues: {
-      employee_id: "",
-      item_name: "",
-      item_type: "",
-      size: "",
-      quantity: 1,
-      delivery_date: new Date().toISOString().split("T")[0],
-      expiry_date: "",
-      observations: "",
-    },
-  });
-
   useEffect(() => {
     if (open) {
-      form.reset({
-        employee_id: dotacion?.employee_id || defaultEmployeeId || "",
-        item_name: dotacion?.item_name || "",
-        item_type: dotacion?.item_type || "",
-        size: dotacion?.size || "",
-        quantity: dotacion?.quantity || 1,
-        delivery_date: dotacion?.delivery_date || new Date().toISOString().split("T")[0],
-        expiry_date: dotacion?.expiry_date || "",
-        observations: dotacion?.observations || "",
-      });
+      if (isEditing && dotacion) {
+        setEmployeeId(dotacion.employee_id);
+        setDeliveryDate(dotacion.delivery_date);
+        setObservations(dotacion.observations || "");
+        setItems([{
+          item_name: dotacion.item_name,
+          item_type: dotacion.item_type || "",
+          size: dotacion.size || "",
+          quantity: dotacion.quantity || 1,
+          expiry_date: dotacion.expiry_date || "",
+        }]);
+      } else {
+        setEmployeeId(defaultEmployeeId || "");
+        setDeliveryDate(new Date().toISOString().split("T")[0]);
+        setObservations("");
+        setItems([emptyItem()]);
+      }
     }
-  }, [dotacion, open, form, defaultEmployeeId]);
+  }, [dotacion, open, defaultEmployeeId, isEditing]);
+
+  const updateItem = (index: number, field: keyof DotacionItem, value: string | number) => {
+    setItems(prev => prev.map((item, i) => i === index ? { ...item, [field]: value } : item));
+  };
+
+  const addItem = () => setItems(prev => [...prev, emptyItem()]);
+
+  const removeItem = (index: number) => {
+    if (items.length > 1) setItems(prev => prev.filter((_, i) => i !== index));
+  };
 
   const mutation = useMutation({
-    mutationFn: async (values: DotacionFormValues) => {
+    mutationFn: async () => {
+      if (!employeeId) throw new Error("Seleccione un empleado");
+      if (!deliveryDate) throw new Error("Ingrese la fecha de entrega");
+      
+      const invalidItems = items.filter(it => !it.item_name.trim());
+      if (invalidItems.length > 0) throw new Error("Todos los elementos deben tener nombre");
+
       const { data: userData } = await supabase.auth.getUser();
       if (!userData.user) throw new Error("Usuario no autenticado");
 
@@ -112,29 +119,36 @@ export function DotacionForm({ open, onOpenChange, dotacion, defaultEmployeeId }
 
       if (!profile?.tenant_id) throw new Error("Tenant no encontrado");
 
-      const payload = {
-        employee_id: values.employee_id,
-        item_name: values.item_name,
-        item_type: values.item_type || null,
-        size: values.size || null,
-        quantity: values.quantity,
-        delivery_date: values.delivery_date,
-        expiry_date: values.expiry_date || null,
-        observations: values.observations || null,
-      };
-
       if (isEditing && dotacion) {
+        const item = items[0];
         const { error } = await supabase
           .from("dotacion")
-          .update(payload)
+          .update({
+            employee_id: employeeId,
+            item_name: item.item_name,
+            item_type: item.item_type || null,
+            size: item.size || null,
+            quantity: item.quantity,
+            delivery_date: deliveryDate,
+            expiry_date: item.expiry_date || null,
+            observations: observations || null,
+          })
           .eq("id", dotacion.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from("dotacion").insert({
-          ...payload,
+        const records = items.map(item => ({
+          employee_id: employeeId,
+          item_name: item.item_name,
+          item_type: item.item_type || null,
+          size: item.size || null,
+          quantity: item.quantity,
+          delivery_date: deliveryDate,
+          expiry_date: item.expiry_date || null,
+          observations: observations || null,
           tenant_id: profile.tenant_id,
-          created_by: userData.user.id,
-        });
+          created_by: userData.user!.id,
+        }));
+        const { error } = await supabase.from("dotacion").insert(records);
         if (error) throw error;
       }
     },
@@ -143,9 +157,8 @@ export function DotacionForm({ open, onOpenChange, dotacion, defaultEmployeeId }
       queryClient.invalidateQueries({ queryKey: ["dotacion-stats"] });
       queryClient.invalidateQueries({ queryKey: ["employee-dotacion"] });
       toast.success(
-        isEditing ? "Dotación actualizada correctamente" : "Entrega registrada correctamente"
+        isEditing ? "Dotación actualizada correctamente" : `${items.length} elemento(s) registrado(s) correctamente`
       );
-      form.reset();
       onOpenChange(false);
     },
     onError: (error) => {
@@ -155,67 +168,74 @@ export function DotacionForm({ open, onOpenChange, dotacion, defaultEmployeeId }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             {isEditing ? "Editar Dotación" : "Registrar Entrega de Dotación"}
           </DialogTitle>
         </DialogHeader>
 
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit((v) => mutation.mutate(v))} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="employee_id"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Empleado</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value} disabled={isEditing || hasDefaultEmployee}>
-                    <FormControl>
+        <div className="space-y-4">
+          {/* Header fields */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Empleado</Label>
+              <Select value={employeeId} onValueChange={setEmployeeId} disabled={isEditing || hasDefaultEmployee}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccione un empleado" />
+                </SelectTrigger>
+                <SelectContent>
+                  {employees?.map((emp) => (
+                    <SelectItem key={emp.id} value={emp.id}>
+                      {emp.first_name} {emp.last_name} - {emp.document_number}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Fecha de Entrega</Label>
+              <Input type="date" value={deliveryDate} onChange={e => setDeliveryDate(e.target.value)} />
+            </div>
+          </div>
+
+          {/* Items */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <Label className="text-base font-semibold">Elementos</Label>
+              {!isEditing && (
+                <Button type="button" variant="outline" size="sm" onClick={addItem}>
+                  <Plus className="mr-1 h-3.5 w-3.5" />
+                  Agregar elemento
+                </Button>
+              )}
+            </div>
+
+            {items.map((item, index) => (
+              <div key={index} className="rounded-lg border border-border bg-muted/30 p-3 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-muted-foreground">Elemento {index + 1}</span>
+                  {items.length > 1 && (
+                    <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => removeItem(index)}>
+                      <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                    </Button>
+                  )}
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs">Nombre del elemento *</Label>
+                    <Input
+                      placeholder="Ej: Pantalón, Camisa, Botas"
+                      value={item.item_name}
+                      onChange={e => updateItem(index, "item_name", e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Tipo</Label>
+                    <Select value={item.item_type} onValueChange={v => updateItem(index, "item_type", v)}>
                       <SelectTrigger>
-                        <SelectValue placeholder="Seleccione un empleado" />
+                        <SelectValue placeholder="Seleccione" />
                       </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {employees?.map((emp) => (
-                        <SelectItem key={emp.id} value={emp.id}>
-                          {emp.first_name} {emp.last_name} - {emp.document_number}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="item_name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Elemento</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Ej: Uniforme completo, Botas de seguridad" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <div className="grid grid-cols-3 gap-4">
-              <FormField
-                control={form.control}
-                name="item_type"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Tipo</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value || ""}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Seleccione" />
-                        </SelectTrigger>
-                      </FormControl>
                       <SelectContent>
                         <SelectItem value="uniforme">Uniforme</SelectItem>
                         <SelectItem value="epp">EPP</SelectItem>
@@ -223,92 +243,42 @@ export function DotacionForm({ open, onOpenChange, dotacion, defaultEmployeeId }
                         <SelectItem value="otro">Otro</SelectItem>
                       </SelectContent>
                     </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="size"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Talla</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Ej: M, 42" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="quantity"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Cantidad</FormLabel>
-                    <FormControl>
-                      <Input type="number" min={1} {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
+                  </div>
+                </div>
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs">Talla</Label>
+                    <Input placeholder="Ej: M, 42" value={item.size} onChange={e => updateItem(index, "size", e.target.value)} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Cantidad</Label>
+                    <Input type="number" min={1} value={item.quantity} onChange={e => updateItem(index, "quantity", parseInt(e.target.value) || 1)} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Fecha vencimiento</Label>
+                    <Input type="date" value={item.expiry_date} onChange={e => updateItem(index, "expiry_date", e.target.value)} />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="delivery_date"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Fecha de Entrega</FormLabel>
-                    <FormControl>
-                      <Input type="date" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="expiry_date"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Fecha de Vencimiento</FormLabel>
-                    <FormControl>
-                      <Input type="date" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
+          {/* Observations */}
+          <div className="space-y-2">
+            <Label>Observaciones</Label>
+            <Textarea placeholder="Observaciones adicionales..." rows={2} value={observations} onChange={e => setObservations(e.target.value)} />
+          </div>
 
-            <FormField
-              control={form.control}
-              name="observations"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Observaciones</FormLabel>
-                  <FormControl>
-                    <Textarea placeholder="Observaciones adicionales..." rows={2} {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <div className="flex justify-end gap-2 pt-4">
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-                Cancelar
-              </Button>
-              <Button type="submit" disabled={mutation.isPending} className="gradient-primary">
-                {mutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {isEditing ? "Guardar Cambios" : "Registrar Entrega"}
-              </Button>
-            </div>
-          </form>
-        </Form>
+          <div className="flex justify-end gap-2 pt-4">
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={() => mutation.mutate()} disabled={mutation.isPending} className="gradient-primary">
+              {mutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {isEditing ? "Guardar Cambios" : `Registrar ${items.length} elemento(s)`}
+            </Button>
+          </div>
+        </div>
       </DialogContent>
     </Dialog>
   );
