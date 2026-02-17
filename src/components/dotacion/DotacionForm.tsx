@@ -68,6 +68,19 @@ export function DotacionForm({ open, onOpenChange, dotacion, defaultEmployeeId }
     },
   });
 
+  const { data: dotacionTypes } = useQuery({
+    queryKey: ["dotacion_types"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("dotacion_types" as any)
+        .select("*")
+        .eq("active", true)
+        .order("name");
+      if (error) throw error;
+      return data as unknown as { id: string; name: string }[];
+    },
+  });
+
   useEffect(() => {
     if (open) {
       if (isEditing && dotacion) {
@@ -237,10 +250,11 @@ export function DotacionForm({ open, onOpenChange, dotacion, defaultEmployeeId }
                         <SelectValue placeholder="Seleccione" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="uniforme">Uniforme</SelectItem>
-                        <SelectItem value="epp">EPP</SelectItem>
-                        <SelectItem value="herramienta">Herramienta</SelectItem>
-                        <SelectItem value="otro">Otro</SelectItem>
+                        {dotacionTypes?.map((dt) => (
+                          <SelectItem key={dt.id} value={dt.name}>
+                            {dt.name}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
