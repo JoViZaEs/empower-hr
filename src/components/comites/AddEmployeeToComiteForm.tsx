@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+
 import {
   Dialog,
   DialogContent,
@@ -46,6 +47,20 @@ export function AddEmployeeToComiteForm({
         .order("name");
       if (error) throw error;
       return data;
+    },
+    enabled: open,
+  });
+
+  const { data: committeeRoles } = useQuery({
+    queryKey: ["committee-roles-active"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("committee_roles" as any)
+        .select("id, name")
+        .eq("active", true)
+        .order("name");
+      if (error) throw error;
+      return (data as any) as { id: string; name: string }[];
     },
     enabled: open,
   });
@@ -107,14 +122,14 @@ export function AddEmployeeToComiteForm({
             <Label>Rol *</Label>
             <Select value={role} onValueChange={setRole}>
               <SelectTrigger>
-                <SelectValue />
+                <SelectValue placeholder="Seleccionar rol" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="Presidente">Presidente</SelectItem>
-                <SelectItem value="Secretario">Secretario</SelectItem>
-                <SelectItem value="Coordinador">Coordinador</SelectItem>
-                <SelectItem value="Miembro">Miembro</SelectItem>
-                <SelectItem value="Suplente">Suplente</SelectItem>
+                {committeeRoles?.map((r) => (
+                  <SelectItem key={r.id} value={r.name}>
+                    {r.name}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>

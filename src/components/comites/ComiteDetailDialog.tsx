@@ -81,6 +81,20 @@ export function ComiteDetailDialog({
     enabled: open && showAddMember,
   });
 
+  const { data: committeeRoles } = useQuery({
+    queryKey: ["committee-roles-active"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("committee_roles" as any)
+        .select("id, name")
+        .eq("active", true)
+        .order("name");
+      if (error) throw error;
+      return (data as any) as { id: string; name: string }[];
+    },
+    enabled: open && showAddMember,
+  });
+
   const addMemberMutation = useMutation({
     mutationFn: async () => {
       const { error } = await supabase.from("committee_members").insert({
@@ -161,17 +175,17 @@ export function ComiteDetailDialog({
                   </Select>
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs">Rol *</Label>
+                   <Label className="text-xs">Rol *</Label>
                   <Select value={memberRole} onValueChange={setMemberRole}>
                     <SelectTrigger>
-                      <SelectValue />
+                      <SelectValue placeholder="Seleccionar rol" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Presidente">Presidente</SelectItem>
-                      <SelectItem value="Secretario">Secretario</SelectItem>
-                      <SelectItem value="Coordinador">Coordinador</SelectItem>
-                      <SelectItem value="Miembro">Miembro</SelectItem>
-                      <SelectItem value="Suplente">Suplente</SelectItem>
+                      {committeeRoles?.map((role) => (
+                        <SelectItem key={role.id} value={role.name}>
+                          {role.name}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
