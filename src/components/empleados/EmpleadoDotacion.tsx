@@ -12,13 +12,18 @@ import {
 } from "@/components/ui/table";
 import { format, isPast } from "date-fns";
 import { es } from "date-fns/locale";
-import { Shirt, Loader2, FileX } from "lucide-react";
+import { Shirt, Loader2, FileX, Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { DotacionForm } from "@/components/dotacion/DotacionForm";
+import { useState } from "react";
 
 interface EmpleadoDotacionProps {
   employeeId: string;
 }
 
 export function EmpleadoDotacion({ employeeId }: EmpleadoDotacionProps) {
+  const [showForm, setShowForm] = useState(false);
+
   const { data: dotacion, isLoading } = useQuery({
     queryKey: ["employee-dotacion", employeeId],
     queryFn: async () => {
@@ -59,11 +64,15 @@ export function EmpleadoDotacion({ employeeId }: EmpleadoDotacionProps) {
 
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle className="flex items-center gap-2">
           <Shirt className="h-5 w-5 text-primary" />
           Historial de Dotación
         </CardTitle>
+        <Button size="sm" className="gradient-primary" onClick={() => setShowForm(true)}>
+          <Plus className="mr-1 h-4 w-4" />
+          Registrar Entrega
+        </Button>
       </CardHeader>
       <CardContent>
         {!dotacion || dotacion.length === 0 ? (
@@ -100,6 +109,12 @@ export function EmpleadoDotacion({ employeeId }: EmpleadoDotacionProps) {
           </Table>
         )}
       </CardContent>
+
+      <DotacionForm
+        open={showForm}
+        onOpenChange={setShowForm}
+        defaultEmployeeId={employeeId}
+      />
     </Card>
   );
 }
