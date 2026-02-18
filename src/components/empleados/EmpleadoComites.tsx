@@ -1,7 +1,9 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -12,13 +14,16 @@ import {
 } from "@/components/ui/table";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { Users, Loader2, FileX } from "lucide-react";
+import { Users, Loader2, FileX, Plus } from "lucide-react";
+import { AddEmployeeToComiteForm } from "@/components/comites/AddEmployeeToComiteForm";
 
 interface EmpleadoComitesProps {
   employeeId: string;
 }
 
 export function EmpleadoComites({ employeeId }: EmpleadoComitesProps) {
+  const [showForm, setShowForm] = useState(false);
+
   const { data: memberships, isLoading } = useQuery({
     queryKey: ["employee-committees", employeeId],
     queryFn: async () => {
@@ -53,11 +58,15 @@ export function EmpleadoComites({ employeeId }: EmpleadoComitesProps) {
 
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle className="flex items-center gap-2">
           <Users className="h-5 w-5 text-primary" />
           Participación en Comités
         </CardTitle>
+        <Button size="sm" className="gradient-primary" onClick={() => setShowForm(true)}>
+          <Plus className="mr-1 h-4 w-4" />
+          Agregar a Comité
+        </Button>
       </CardHeader>
       <CardContent>
         {!memberships || memberships.length === 0 ? (
@@ -98,6 +107,12 @@ export function EmpleadoComites({ employeeId }: EmpleadoComitesProps) {
           </Table>
         )}
       </CardContent>
+
+      <AddEmployeeToComiteForm
+        open={showForm}
+        onOpenChange={setShowForm}
+        employeeId={employeeId}
+      />
     </Card>
   );
 }
