@@ -101,8 +101,8 @@ export function Sidebar() {
             </div>
             {!collapsed && (
               <div className="animate-fade-in">
-                <h1 className="text-lg font-bold text-sidebar-foreground">RRHH Pro</h1>
-                <p className="text-xs text-sidebar-foreground/60">Gestión Integral</p>
+                <h1 className="text-lg font-bold text-sidebar-foreground">Demo Inc</h1>
+                <p className="text-xs text-sidebar-foreground/60">Nexu HR</p>
               </div>
             )}
           </div>

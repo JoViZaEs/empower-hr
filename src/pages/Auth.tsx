@@ -138,7 +138,7 @@ export default function Auth() {
             <Shield className="w-8 h-8 text-primary" />
           </div>
           <div>
-            <CardTitle className="text-2xl font-bold">SST Manager</CardTitle>
+            <CardTitle className="text-2xl font-bold">Nexu HR</CardTitle>
             <CardDescription>Sistema de Gestión de Recursos Humanos</CardDescription>
           </div>
         </CardHeader>
