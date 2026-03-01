@@ -829,6 +829,142 @@ export type Database = {
           },
         ]
       }
+      event_participants: {
+        Row: {
+          employee_id: string
+          event_id: string
+          id: string
+          invited_at: string | null
+          signature_url: string | null
+          signed: boolean | null
+          signed_at: string | null
+        }
+        Insert: {
+          employee_id: string
+          event_id: string
+          id?: string
+          invited_at?: string | null
+          signature_url?: string | null
+          signed?: boolean | null
+          signed_at?: string | null
+        }
+        Update: {
+          employee_id?: string
+          event_id?: string
+          id?: string
+          invited_at?: string | null
+          signature_url?: string | null
+          signed?: boolean | null
+          signed_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_participants_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_participants_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      event_types: {
+        Row: {
+          active: boolean | null
+          created_at: string | null
+          description: string | null
+          id: string
+          is_standard: boolean | null
+          name: string
+          tenant_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          active?: boolean | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_standard?: boolean | null
+          name: string
+          tenant_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          active?: boolean | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_standard?: boolean | null
+          name?: string
+          tenant_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_types_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      events: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          event_date: string
+          event_type: string
+          id: string
+          location: string | null
+          status: Database["public"]["Enums"]["event_status"] | null
+          tenant_id: string
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          event_date: string
+          event_type: string
+          id?: string
+          location?: string | null
+          status?: Database["public"]["Enums"]["event_status"] | null
+          tenant_id: string
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          event_date?: string
+          event_type?: string
+          id?: string
+          location?: string | null
+          status?: Database["public"]["Enums"]["event_status"] | null
+          tenant_id?: string
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "events_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       exam_types: {
         Row: {
           active: boolean | null
@@ -1676,6 +1812,7 @@ export type Database = {
       communication_type: "circular" | "memorando" | "notificacion" | "alerta"
       course_status: "pendiente" | "en_progreso" | "completado" | "vencido"
       evaluation_status: "pendiente" | "en_proceso" | "completada" | "cancelada"
+      event_status: "borrador" | "en_progreso" | "completado" | "cancelado"
       exam_status: "pendiente" | "vigente" | "vencido" | "proximo_vencer"
       permission_action:
         | "ver"
@@ -1817,6 +1954,7 @@ export const Constants = {
       communication_type: ["circular", "memorando", "notificacion", "alerta"],
       course_status: ["pendiente", "en_progreso", "completado", "vencido"],
       evaluation_status: ["pendiente", "en_proceso", "completada", "cancelada"],
+      event_status: ["borrador", "en_progreso", "completado", "cancelado"],
       exam_status: ["pendiente", "vigente", "vencido", "proximo_vencer"],
       permission_action: [
         "ver",
