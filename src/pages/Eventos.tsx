@@ -211,9 +211,9 @@ export default function Eventos() {
       <div className="animate-fade-in">
         <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-2xl font-bold">Eventos y Firmas</h1>
+            <h1 className="text-2xl font-bold">Eventos</h1>
             <p className="mt-1 text-muted-foreground">
-              Gestión de eventos con recolección de firmas digitales
+              Gestión de eventos organizacionales con seguimiento de asistencia
             </p>
           </div>
           <Button className="gradient-primary" onClick={() => { setEditData(null); setFormOpen(true); }}>
