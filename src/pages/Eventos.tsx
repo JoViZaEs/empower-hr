@@ -53,6 +53,19 @@ export default function Eventos() {
     },
   });
 
+  const { data: dotacionPendientes } = useQuery({
+    queryKey: ["dotacion-pending-signatures"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("dotacion")
+        .select("id, item_name, delivery_date, employees(first_name, last_name)")
+        .is("signature_url", null)
+        .order("delivery_date", { ascending: false });
+      if (error) throw error;
+      return data as any[];
+    },
+  });
+
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase.from("events" as any).delete().eq("id", id);
@@ -73,18 +86,28 @@ export default function Eventos() {
   ) || 0;
   const totalPending = totalParticipants - totalSigned;
 
-  // Pending signatures for sidebar
-  const pendingSignatures = events
+  // Pending signatures for sidebar (events + dotacion)
+  const eventPendingSignatures = events
     ?.flatMap((e) =>
       (e.participants || [])
         .filter((p: any) => !p.signed)
         .map((p: any) => ({
           id: p.id,
           employee: p.employee ? `${p.employee.first_name} ${p.employee.last_name}` : "Desconocido",
-          event: e.title,
+          source: e.title,
+          type: "evento" as const,
         }))
-    )
-    ?.slice(0, 8) || [];
+    ) || [];
+
+  const dotacionPendingSignatures = (dotacionPendientes || []).map((d: any) => ({
+    id: d.id,
+    employee: d.employees ? `${d.employees.first_name} ${d.employees.last_name}` : "Desconocido",
+    source: `Dotación: ${d.item_name}`,
+    type: "dotacion" as const,
+  }));
+
+  const pendingSignatures = [...eventPendingSignatures, ...dotacionPendingSignatures].slice(0, 10);
+  const totalPendingAll = totalPending + (dotacionPendientes?.length || 0);
 
   const handleEdit = (event: any) => {
     setEditData({
@@ -224,7 +247,7 @@ export default function Eventos() {
               <Clock className="h-6 w-6" />
             </div>
             <div>
-              <p className="text-2xl font-bold">{totalPending}</p>
+              <p className="text-2xl font-bold">{totalPendingAll}</p>
               <p className="text-sm text-muted-foreground">Firmas pendientes</p>
             </div>
           </div>
@@ -296,8 +319,11 @@ export default function Eventos() {
                         >
                           <div>
                             <p className="font-medium text-sm">{item.employee}</p>
-                            <p className="text-xs text-muted-foreground">{item.event}</p>
+                            <p className="text-xs text-muted-foreground">{item.source}</p>
                           </div>
+                          <Badge variant="outline" className="text-xs">
+                            {item.type === "evento" ? "Evento" : "Dotación"}
+                          </Badge>
                         </div>
                       ))}
                     </div>
