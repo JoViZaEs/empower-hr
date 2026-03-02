@@ -1573,6 +1573,66 @@ export type Database = {
           },
         ]
       }
+      signatures: {
+        Row: {
+          created_at: string | null
+          employee_id: string
+          id: string
+          method: string
+          module: string
+          record_id: string
+          signature_url: string | null
+          signed_at: string
+          signed_by: string | null
+          tenant_id: string
+          updated_at: string | null
+          watermark_text: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          employee_id: string
+          id?: string
+          method?: string
+          module: string
+          record_id: string
+          signature_url?: string | null
+          signed_at?: string
+          signed_by?: string | null
+          tenant_id: string
+          updated_at?: string | null
+          watermark_text?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          employee_id?: string
+          id?: string
+          method?: string
+          module?: string
+          record_id?: string
+          signature_url?: string | null
+          signed_at?: string
+          signed_by?: string | null
+          tenant_id?: string
+          updated_at?: string | null
+          watermark_text?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "signatures_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "signatures_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tenants: {
         Row: {
           active: boolean | null

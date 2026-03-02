@@ -14,6 +14,7 @@ import Cursos from "./pages/Cursos";
 import Dotacion from "./pages/Dotacion";
 import Comites from "./pages/Comites";
 import Eventos from "./pages/Eventos";
+import Firmas from "./pages/Firmas";
 import EvaluacionesDesempeno from "./pages/EvaluacionesDesempeno";
 import EvaluacionesCompetencias from "./pages/EvaluacionesCompetencias";
 import Comunicaciones from "./pages/Comunicaciones";
@@ -42,6 +43,7 @@ const App = () => (
             <Route path="/dotacion" element={<ProtectedRoute><Dotacion /></ProtectedRoute>} />
             <Route path="/comites" element={<ProtectedRoute><Comites /></ProtectedRoute>} />
             <Route path="/eventos" element={<ProtectedRoute><Eventos /></ProtectedRoute>} />
+            <Route path="/firmas" element={<ProtectedRoute><Firmas /></ProtectedRoute>} />
             <Route path="/evaluaciones-desempeno" element={<ProtectedRoute><EvaluacionesDesempeno /></ProtectedRoute>} />
             <Route path="/evaluaciones-competencias" element={<ProtectedRoute><EvaluacionesCompetencias /></ProtectedRoute>} />
             <Route path="/comunicaciones" element={<ProtectedRoute><Comunicaciones /></ProtectedRoute>} />
