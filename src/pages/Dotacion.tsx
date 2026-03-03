@@ -23,18 +23,25 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Plus, Shirt, Package, CheckCircle, Clock, Loader2, FileX, Edit, Trash2, AlertTriangle } from "lucide-react";
+import { Plus, Shirt, Package, CheckCircle, Clock, Loader2, FileX, Edit, Trash2, AlertTriangle, Eye } from "lucide-react";
 import { format, isPast, startOfYear } from "date-fns";
 import { es } from "date-fns/locale";
 import { toast } from "sonner";
 import { DotacionForm } from "@/components/dotacion/DotacionForm";
 import type { Tables } from "@/integrations/supabase/types";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 export default function Dotacion() {
   const queryClient = useQueryClient();
   const [formOpen, setFormOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<Tables<"dotacion"> | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [viewSignatureUrl, setViewSignatureUrl] = useState<string | null>(null);
 
   const { data: dotacion, isLoading } = useQuery({
     queryKey: ["dotacion"],
@@ -198,10 +205,22 @@ export default function Dotacion() {
                         </TableCell>
                         <TableCell>
                           {item.signature_url ? (
-                            <Badge className="bg-success/10 text-success border-success/20">
-                              <CheckCircle className="mr-1 h-3 w-3" />
-                              Firmado
-                            </Badge>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-auto p-0"
+                              onClick={() => {
+                                const { data } = supabase.storage
+                                  .from("signatures")
+                                  .getPublicUrl(item.signature_url!);
+                                setViewSignatureUrl(data.publicUrl);
+                              }}
+                            >
+                              <Badge className="bg-success/10 text-success border-success/20 cursor-pointer">
+                                <Eye className="mr-1 h-3 w-3" />
+                                Ver Firma
+                              </Badge>
+                            </Button>
                           ) : (
                             <Badge className="bg-warning/10 text-warning border-warning/20">
                               <Clock className="mr-1 h-3 w-3" />
@@ -211,10 +230,22 @@ export default function Dotacion() {
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-1">
-                            <Button variant="ghost" size="icon" onClick={() => handleEdit(item)}>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleEdit(item)}
+                              disabled={!!item.signature_url}
+                              title={item.signature_url ? "No se puede editar un registro firmado" : "Editar"}
+                            >
                               <Edit className="h-4 w-4" />
                             </Button>
-                            <Button variant="ghost" size="icon" onClick={() => setDeleteId(item.id)}>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => setDeleteId(item.id)}
+                              disabled={!!item.signature_url}
+                              title={item.signature_url ? "No se puede eliminar un registro firmado" : "Eliminar"}
+                            >
                               <Trash2 className="h-4 w-4 text-destructive" />
                             </Button>
                           </div>
@@ -254,6 +285,23 @@ export default function Dotacion() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      {/* Signature preview dialog */}
+      <Dialog open={!!viewSignatureUrl} onOpenChange={() => setViewSignatureUrl(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Firma Digital</DialogTitle>
+          </DialogHeader>
+          {viewSignatureUrl && (
+            <div className="flex justify-center p-4">
+              <img
+                src={viewSignatureUrl}
+                alt="Firma digital"
+                className="max-w-full max-h-64 rounded-lg border border-border"
+              />
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </MainLayout>
   );
 }

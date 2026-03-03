@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,12 +11,17 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { format, isPast } from "date-fns";
 import { es } from "date-fns/locale";
-import { Shirt, Loader2, FileX, Plus } from "lucide-react";
+import { Shirt, Loader2, FileX, Plus, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DotacionForm } from "@/components/dotacion/DotacionForm";
-import { useState } from "react";
 
 interface EmpleadoDotacionProps {
   employeeId: string;
@@ -23,6 +29,7 @@ interface EmpleadoDotacionProps {
 
 export function EmpleadoDotacion({ employeeId }: EmpleadoDotacionProps) {
   const [showForm, setShowForm] = useState(false);
+  const [viewSignatureUrl, setViewSignatureUrl] = useState<string | null>(null);
 
   const { data: dotacion, isLoading } = useQuery({
     queryKey: ["employee-dotacion", employeeId],
@@ -63,58 +70,100 @@ export function EmpleadoDotacion({ employeeId }: EmpleadoDotacionProps) {
   }
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle className="flex items-center gap-2">
-          <Shirt className="h-5 w-5 text-primary" />
-          Historial de Dotación
-        </CardTitle>
-        <Button size="sm" className="gradient-primary" onClick={() => setShowForm(true)}>
-          <Plus className="mr-1 h-4 w-4" />
-          Registrar Entrega
-        </Button>
-      </CardHeader>
-      <CardContent>
-        {!dotacion || dotacion.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
-            <FileX className="h-12 w-12 mb-2" />
-            <p>No hay dotación registrada</p>
-          </div>
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Elemento</TableHead>
-                <TableHead>Tipo</TableHead>
-                <TableHead>Talla</TableHead>
-                <TableHead>Cantidad</TableHead>
-                <TableHead>Fecha Entrega</TableHead>
-                <TableHead>Vencimiento</TableHead>
-                <TableHead>Estado</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {dotacion.map((item) => (
-                <TableRow key={item.id}>
-                  <TableCell className="font-medium">{item.item_name}</TableCell>
-                  <TableCell>{item.item_type || "-"}</TableCell>
-                  <TableCell>{item.size || "-"}</TableCell>
-                  <TableCell>{item.quantity}</TableCell>
-                  <TableCell>{formatDate(item.delivery_date)}</TableCell>
-                  <TableCell>{formatDate(item.expiry_date)}</TableCell>
-                  <TableCell>{getExpiryStatus(item.expiry_date)}</TableCell>
+    <>
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle className="flex items-center gap-2">
+            <Shirt className="h-5 w-5 text-primary" />
+            Historial de Dotación
+          </CardTitle>
+          <Button size="sm" className="gradient-primary" onClick={() => setShowForm(true)}>
+            <Plus className="mr-1 h-4 w-4" />
+            Registrar Entrega
+          </Button>
+        </CardHeader>
+        <CardContent>
+          {!dotacion || dotacion.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+              <FileX className="h-12 w-12 mb-2" />
+              <p>No hay dotación registrada</p>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Elemento</TableHead>
+                  <TableHead>Tipo</TableHead>
+                  <TableHead>Talla</TableHead>
+                  <TableHead>Cantidad</TableHead>
+                  <TableHead>Fecha Entrega</TableHead>
+                  <TableHead>Vencimiento</TableHead>
+                  <TableHead>Estado</TableHead>
+                  <TableHead>Firma</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
-      </CardContent>
+              </TableHeader>
+              <TableBody>
+                {dotacion.map((item) => (
+                  <TableRow key={item.id}>
+                    <TableCell className="font-medium">{item.item_name}</TableCell>
+                    <TableCell>{item.item_type || "-"}</TableCell>
+                    <TableCell>{item.size || "-"}</TableCell>
+                    <TableCell>{item.quantity}</TableCell>
+                    <TableCell>{formatDate(item.delivery_date)}</TableCell>
+                    <TableCell>{formatDate(item.expiry_date)}</TableCell>
+                    <TableCell>{getExpiryStatus(item.expiry_date)}</TableCell>
+                    <TableCell>
+                      {item.signature_url ? (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-auto p-0"
+                          onClick={() => {
+                            const { data } = supabase.storage
+                              .from("signatures")
+                              .getPublicUrl(item.signature_url!);
+                            setViewSignatureUrl(data.publicUrl);
+                          }}
+                        >
+                          <Badge className="bg-success/10 text-success border-success/20 cursor-pointer">
+                            <Eye className="mr-1 h-3 w-3" />
+                            Ver Firma
+                          </Badge>
+                        </Button>
+                      ) : (
+                        <Badge className="bg-warning/10 text-warning border-warning/20">Pendiente</Badge>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
 
-      <DotacionForm
-        open={showForm}
-        onOpenChange={setShowForm}
-        defaultEmployeeId={employeeId}
-      />
-    </Card>
+        <DotacionForm
+          open={showForm}
+          onOpenChange={setShowForm}
+          defaultEmployeeId={employeeId}
+        />
+      </Card>
+
+      <Dialog open={!!viewSignatureUrl} onOpenChange={() => setViewSignatureUrl(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Firma Digital</DialogTitle>
+          </DialogHeader>
+          {viewSignatureUrl && (
+            <div className="flex justify-center p-4">
+              <img
+                src={viewSignatureUrl}
+                alt="Firma digital"
+                className="max-w-full max-h-64 rounded-lg border border-border"
+              />
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
