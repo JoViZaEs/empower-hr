@@ -25,6 +25,7 @@ import { Button } from "@/components/ui/button";
 import { useSidebarState } from "./MainLayout";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useAuth } from "@/hooks/useAuth";
+import nexurhIcon from "@/assets/nexurh-icon.svg";
 
 interface NavItem {
   name: string;
@@ -98,13 +99,11 @@ export function Sidebar() {
         {/* Logo */}
         <div className="flex h-16 items-center justify-between border-b border-sidebar-border px-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-sidebar-primary">
-              <Building2 className="h-6 w-6 text-sidebar-primary-foreground" />
-            </div>
+            <img src={nexurhIcon} alt="NexuRH" className="h-10 w-10" />
             {!collapsed && (
               <div className="animate-fade-in">
-                <h1 className="text-lg font-bold text-sidebar-foreground">Demo Inc</h1>
-                <p className="text-xs text-sidebar-foreground/60">Nexu HR</p>
+                <h1 className="text-lg font-bold text-sidebar-foreground">NexuRH</h1>
+                <p className="text-xs text-sidebar-foreground/60">Gestión de RRHH</p>
               </div>
             )}
           </div>
