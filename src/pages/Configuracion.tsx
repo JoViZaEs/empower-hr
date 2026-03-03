@@ -7,6 +7,7 @@ import { AlertSettings } from "@/components/settings/AlertSettings";
 import { EmailTemplatesSettings } from "@/components/settings/EmailTemplatesSettings";
 import NotificationPreferencesSettings from "@/components/settings/NotificationPreferencesSettings";
 import { MasterDataSettings } from "@/components/settings/MasterDataSettings";
+import { SignatureSettings } from "@/components/settings/SignatureSettings";
 import {
   Building2,
   Users,
@@ -15,6 +16,7 @@ import {
   Mail,
   BellRing,
   Database,
+  PenTool,
 } from "lucide-react";
 
 export default function Configuracion() {
@@ -30,7 +32,7 @@ export default function Configuracion() {
         </div>
 
         <Tabs defaultValue="empresa" className="space-y-6">
-          <TabsList className="grid w-full max-w-4xl grid-cols-7">
+          <TabsList className="grid w-full max-w-4xl grid-cols-8">
             <TabsTrigger value="empresa" className="flex items-center gap-2">
               <Building2 className="h-4 w-4" />
               <span className="hidden sm:inline">Empresa</span>
@@ -38,6 +40,10 @@ export default function Configuracion() {
             <TabsTrigger value="maestros" className="flex items-center gap-2">
               <Database className="h-4 w-4" />
               <span className="hidden sm:inline">Maestros</span>
+            </TabsTrigger>
+            <TabsTrigger value="firmas" className="flex items-center gap-2">
+              <PenTool className="h-4 w-4" />
+              <span className="hidden sm:inline">Firmas</span>
             </TabsTrigger>
             <TabsTrigger value="usuarios" className="flex items-center gap-2">
               <Users className="h-4 w-4" />
@@ -67,6 +73,10 @@ export default function Configuracion() {
 
           <TabsContent value="maestros">
             <MasterDataSettings />
+          </TabsContent>
+
+          <TabsContent value="firmas">
+            <SignatureSettings />
           </TabsContent>
 
           <TabsContent value="usuarios">
