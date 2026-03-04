@@ -4,7 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, PenTool, Info } from "lucide-react";
+import { Loader2, PenTool, Info, FileImage } from "lucide-react";
 import { toast } from "sonner";
 
 const moduleIcons: Record<string, string> = {
@@ -52,13 +52,15 @@ export function SignatureSettings() {
 
   const signatureModules: string[] =
     (tenant?.settings as any)?.signature_modules || [];
+  const evidenceModules: string[] =
+    (tenant?.settings as any)?.evidence_modules || [];
 
   const toggleMutation = useMutation({
-    mutationFn: async ({ moduleCode, enabled }: { moduleCode: string; enabled: boolean }) => {
+    mutationFn: async ({ moduleCode, enabled, settingKey }: { moduleCode: string; enabled: boolean; settingKey: "signature_modules" | "evidence_modules" }) => {
       if (!tenant) throw new Error("Tenant no encontrado");
 
       const currentSettings = (tenant.settings as Record<string, any>) || {};
-      const current: string[] = currentSettings.signature_modules || [];
+      const current: string[] = currentSettings[settingKey] || [];
 
       const updated = enabled
         ? [...current, moduleCode]
@@ -66,20 +68,18 @@ export function SignatureSettings() {
 
       const { error } = await supabase
         .from("tenants")
-        .update({ settings: { ...currentSettings, signature_modules: updated } })
+        .update({ settings: { ...currentSettings, [settingKey]: updated } })
         .eq("id", tenant.id);
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tenant-settings"] });
-      toast.success("Configuración de firmas actualizada");
+      toast.success("Configuración actualizada");
     },
     onError: (err) => toast.error("Error: " + err.message),
   });
 
   const isLoading = loadingModules || loadingTenant;
-
-  // Filter out the 'firmas' module itself from the list
   const configurableModules = modules?.filter((m) => m.code !== "firmas") || [];
 
   return (
@@ -87,10 +87,11 @@ export function SignatureSettings() {
       <div>
         <h2 className="text-xl font-semibold">Firmas y Evidencias</h2>
         <p className="text-muted-foreground">
-          Parametriza qué módulos requieren firma obligatoria para sus registros.
+          Parametriza qué módulos requieren firma obligatoria y/o evidencias adjuntas.
         </p>
       </div>
 
+      {/* Firmas Card */}
       <Card>
         <CardHeader>
           <div className="flex items-center gap-3">
@@ -143,7 +144,7 @@ export function SignatureSettings() {
                       <Switch
                         checked={isEnabled}
                         onCheckedChange={(checked) =>
-                          toggleMutation.mutate({ moduleCode: mod.code, enabled: checked })
+                          toggleMutation.mutate({ moduleCode: mod.code, enabled: checked, settingKey: "signature_modules" })
                         }
                         disabled={toggleMutation.isPending}
                       />
@@ -156,6 +157,73 @@ export function SignatureSettings() {
         </CardContent>
       </Card>
 
+      {/* Evidencias Card */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-3">
+            <div className="rounded-lg bg-accent/50 p-2 text-accent-foreground">
+              <FileImage className="h-5 w-5" />
+            </div>
+            <div>
+              <CardTitle className="text-lg">Módulos con Evidencias</CardTitle>
+              <CardDescription>
+                Activa o desactiva la carga obligatoria de evidencias (fotos, PDFs, archivos) para cada módulo.
+                Los registros sin evidencia aparecerán como pendientes.
+              </CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <div className="flex justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : configurableModules.length === 0 ? (
+            <p className="text-center text-muted-foreground py-8">
+              No hay módulos disponibles para configurar.
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {configurableModules.map((mod) => {
+                const isEnabled = evidenceModules.includes(mod.code);
+                const icon = moduleIcons[mod.code] || "📦";
+                return (
+                  <div
+                    key={mod.id}
+                    className="flex items-center justify-between p-4 rounded-lg border border-border bg-card hover:bg-muted/50 transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="text-xl">{icon}</span>
+                      <div>
+                        <p className="font-medium">{mod.name}</p>
+                        {mod.description && (
+                          <p className="text-sm text-muted-foreground">{mod.description}</p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      {isEnabled && (
+                        <Badge className="bg-primary/10 text-primary border-primary/20 text-xs">
+                          Evidencia activa
+                        </Badge>
+                      )}
+                      <Switch
+                        checked={isEnabled}
+                        onCheckedChange={(checked) =>
+                          toggleMutation.mutate({ moduleCode: mod.code, enabled: checked, settingKey: "evidence_modules" })
+                        }
+                        disabled={toggleMutation.isPending}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Info Card */}
       <Card>
         <CardContent className="flex items-start gap-3 py-4">
           <Info className="h-5 w-5 text-muted-foreground mt-0.5 shrink-0" />
@@ -163,9 +231,11 @@ export function SignatureSettings() {
             <p>
               <strong>¿Cómo funciona?</strong> Al activar la firma en un módulo, todos los registros
               nuevos de ese módulo aparecerán como "pendientes de firma" en el Centro de Firmas.
+              Los registros firmados quedarán protegidos y no podrán ser editados ni eliminados.
             </p>
             <p>
-              Los registros firmados quedarán protegidos y no podrán ser editados ni eliminados.
+              Al activar evidencias en un módulo, cada registro permitirá adjuntar archivos (PDF, fotos, documentos)
+              como soporte. Los registros sin evidencia se marcarán como pendientes.
             </p>
           </div>
         </CardContent>
