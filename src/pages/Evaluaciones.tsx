@@ -37,6 +37,7 @@ const estadoColor: Record<string, string> = {
 export default function Evaluaciones() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [showForm, setShowForm] = useState(false);
 
   const { data: evaluations, isLoading } = useQuery({
     queryKey: ["evaluations"],
@@ -88,7 +89,7 @@ export default function Evaluaciones() {
               Gestión unificada de evaluaciones de desempeño, competencias y clima
             </p>
           </div>
-          <Button className="gap-2">
+          <Button className="gap-2" onClick={() => setShowForm(true)}>
             <Plus className="h-4 w-4" />
             Nueva Evaluación
           </Button>
