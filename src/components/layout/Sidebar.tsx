@@ -15,7 +15,7 @@ import {
   Building2,
   LogOut,
   ClipboardCheck,
-  Target,
+  
   Mail,
   
   LucideIcon,
@@ -45,8 +45,7 @@ const navigation: NavItem[] = [
   { name: "Comités", href: "/comites", icon: UserCheck, moduleCode: "comites" },
   { name: "Eventos", href: "/eventos", icon: FileSignature, moduleCode: "eventos" },
   { name: "Centro de Firmas", href: "/firmas", icon: PenTool, moduleCode: "firmas" },
-  { name: "Eval. Desempeño", href: "/evaluaciones-desempeno", icon: ClipboardCheck, moduleCode: "evaluaciones_desempeno" },
-  { name: "Eval. Competencias", href: "/evaluaciones-competencias", icon: Target, moduleCode: "evaluaciones_competencias" },
+  { name: "Evaluaciones", href: "/evaluaciones", icon: ClipboardCheck, moduleCode: "evaluaciones" },
   { name: "Comunicaciones", href: "/comunicaciones", icon: Mail, moduleCode: "comunicaciones" },
 ];
 

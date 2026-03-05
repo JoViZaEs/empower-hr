@@ -87,27 +87,15 @@ export default function Dashboard() {
     },
   });
 
-  const { data: perfEvalStats } = useQuery({
-    queryKey: ["dashboard-perf-eval-stats"],
+  const { data: evalStats } = useQuery({
+    queryKey: ["dashboard-eval-stats"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("performance_evaluations")
+        .from("evaluations")
         .select("id, status");
       if (error) throw error;
-      const pending = data?.filter(e => e.status === "pendiente" || e.status === "en_proceso").length || 0;
+      const pending = data?.filter((e: any) => e.status === "pendiente" || e.status === "en_proceso").length || 0;
       return { total: data?.length || 0, pending };
-    },
-  });
-
-  const { data: compEvalStats } = useQuery({
-    queryKey: ["dashboard-comp-eval-stats"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("competency_evaluations")
-        .select("id, gap");
-      if (error) throw error;
-      const withGap = data?.filter(e => e.gap && e.gap > 0).length || 0;
-      return { total: data?.length || 0, withGap };
     },
   });
 
