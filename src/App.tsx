@@ -15,8 +15,7 @@ import Dotacion from "./pages/Dotacion";
 import Comites from "./pages/Comites";
 import Eventos from "./pages/Eventos";
 import Firmas from "./pages/Firmas";
-import EvaluacionesDesempeno from "./pages/EvaluacionesDesempeno";
-import EvaluacionesCompetencias from "./pages/EvaluacionesCompetencias";
+import Evaluaciones from "./pages/Evaluaciones";
 import Comunicaciones from "./pages/Comunicaciones";
 import Configuracion from "./pages/Configuracion";
 import Notificaciones from "./pages/Notificaciones";
@@ -44,8 +43,7 @@ const App = () => (
             <Route path="/comites" element={<ProtectedRoute><Comites /></ProtectedRoute>} />
             <Route path="/eventos" element={<ProtectedRoute><Eventos /></ProtectedRoute>} />
             <Route path="/firmas" element={<ProtectedRoute><Firmas /></ProtectedRoute>} />
-            <Route path="/evaluaciones-desempeno" element={<ProtectedRoute><EvaluacionesDesempeno /></ProtectedRoute>} />
-            <Route path="/evaluaciones-competencias" element={<ProtectedRoute><EvaluacionesCompetencias /></ProtectedRoute>} />
+            <Route path="/evaluaciones" element={<ProtectedRoute><Evaluaciones /></ProtectedRoute>} />
             <Route path="/comunicaciones" element={<ProtectedRoute><Comunicaciones /></ProtectedRoute>} />
             <Route path="/configuracion" element={<ProtectedRoute><Configuracion /></ProtectedRoute>} />
             <Route path="/notificaciones" element={<ProtectedRoute><Notificaciones /></ProtectedRoute>} />

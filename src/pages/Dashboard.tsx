@@ -11,7 +11,7 @@ import {
   FileSignature, 
   GraduationCap, 
   ClipboardCheck,
-  Target,
+  
   Mail
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
@@ -87,27 +87,15 @@ export default function Dashboard() {
     },
   });
 
-  const { data: perfEvalStats } = useQuery({
-    queryKey: ["dashboard-perf-eval-stats"],
+  const { data: evalStats } = useQuery({
+    queryKey: ["dashboard-eval-stats"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("performance_evaluations")
+        .from("evaluations")
         .select("id, status");
       if (error) throw error;
-      const pending = data?.filter(e => e.status === "pendiente" || e.status === "en_proceso").length || 0;
+      const pending = data?.filter((e: any) => e.status === "pendiente" || e.status === "en_proceso").length || 0;
       return { total: data?.length || 0, pending };
-    },
-  });
-
-  const { data: compEvalStats } = useQuery({
-    queryKey: ["dashboard-comp-eval-stats"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("competency_evaluations")
-        .select("id, gap");
-      if (error) throw error;
-      const withGap = data?.filter(e => e.gap && e.gap > 0).length || 0;
-      return { total: data?.length || 0, withGap };
     },
   });
 
@@ -190,17 +178,11 @@ export default function Dashboard() {
             variant={vigilanciaStats && vigilanciaStats.expired > 0 ? "danger" : "default"}
           />
           <StatCard
-            title="Eval. Desempeño"
-            value={perfEvalStats?.pending ?? "-"}
-            subtitle={`${perfEvalStats?.total ?? 0} en total`}
+            title="Evaluaciones"
+            value={evalStats?.pending ?? "-"}
+            subtitle={`${evalStats?.total ?? 0} en total`}
             icon={ClipboardCheck}
-          />
-          <StatCard
-            title="Brechas Competencias"
-            value={compEvalStats?.withGap ?? "-"}
-            subtitle="Requieren atención"
-            icon={Target}
-            variant={compEvalStats && compEvalStats.withGap > 0 ? "warning" : "default"}
+            variant={evalStats && evalStats.pending > 0 ? "warning" : "default"}
           />
           <StatCard
             title="Comunicaciones"
