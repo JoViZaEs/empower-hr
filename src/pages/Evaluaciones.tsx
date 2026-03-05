@@ -25,6 +25,7 @@ import {
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { Plus, Search, Filter, ClipboardCheck, TrendingUp, Users, Loader2, Star, FileX } from "lucide-react";
+import { EvaluacionForm } from "@/components/evaluaciones/EvaluacionForm";
 
 const estadoColor: Record<string, string> = {
   completada: "bg-success/10 text-success border-success/20",
