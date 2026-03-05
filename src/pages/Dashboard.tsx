@@ -11,7 +11,7 @@ import {
   FileSignature, 
   GraduationCap, 
   ClipboardCheck,
-  Target,
+  
   Mail
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
