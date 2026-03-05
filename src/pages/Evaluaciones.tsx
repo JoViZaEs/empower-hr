@@ -25,6 +25,7 @@ import {
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { Plus, Search, Filter, ClipboardCheck, TrendingUp, Users, Loader2, Star, FileX } from "lucide-react";
+import { EvaluacionForm } from "@/components/evaluaciones/EvaluacionForm";
 
 const estadoColor: Record<string, string> = {
   completada: "bg-success/10 text-success border-success/20",
@@ -36,6 +37,7 @@ const estadoColor: Record<string, string> = {
 export default function Evaluaciones() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [showForm, setShowForm] = useState(false);
 
   const { data: evaluations, isLoading } = useQuery({
     queryKey: ["evaluations"],
@@ -87,7 +89,7 @@ export default function Evaluaciones() {
               Gestión unificada de evaluaciones de desempeño, competencias y clima
             </p>
           </div>
-          <Button className="gap-2">
+          <Button className="gap-2" onClick={() => setShowForm(true)}>
             <Plus className="h-4 w-4" />
             Nueva Evaluación
           </Button>
@@ -252,6 +254,7 @@ export default function Evaluaciones() {
           </CardContent>
         </Card>
       </div>
+      <EvaluacionForm open={showForm} onOpenChange={setShowForm} />
     </MainLayout>
   );
 }
