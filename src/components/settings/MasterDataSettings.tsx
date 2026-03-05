@@ -10,9 +10,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Plus, Pencil, FileText, Briefcase, Building2, Loader2, Activity, Stethoscope, Lock, GraduationCap, BookOpen, HardHat, Users, CalendarCheck } from "lucide-react";
+import { Plus, Pencil, FileText, Briefcase, Building2, Loader2, Activity, Stethoscope, Lock, GraduationCap, BookOpen, HardHat, Users, CalendarCheck, ClipboardCheck } from "lucide-react";
 
-type MasterDataType = "document_types" | "positions" | "departments" | "vigilancia_types" | "exam_types" | "course_providers" | "course_types" | "dotacion_types" | "committee_roles" | "event_types";
+type MasterDataType = "document_types" | "positions" | "departments" | "vigilancia_types" | "exam_types" | "course_providers" | "course_types" | "dotacion_types" | "committee_roles" | "event_types" | "evaluation_types";
 
 interface MasterDataItem {
   id: string;
@@ -122,6 +122,12 @@ function MasterDataForm({ type, item, onSuccess, onCancel }: MasterDataFormProps
             .update({ name, active, description })
             .eq("id", item.id);
           if (error) throw error;
+        } else if (type === "evaluation_types") {
+          const { error } = await supabase
+            .from("evaluation_types" as any)
+            .update({ name, active, description })
+            .eq("id", item.id);
+          if (error) throw error;
         }
         toast.success("Registro actualizado");
       } else {
@@ -173,6 +179,11 @@ function MasterDataForm({ type, item, onSuccess, onCancel }: MasterDataFormProps
         } else if (type === "event_types") {
           const { error } = await supabase
             .from("event_types" as any)
+            .insert([{ name, active, description, tenant_id: profile.tenant_id, is_standard: false }]);
+          if (error) throw error;
+        } else if (type === "evaluation_types") {
+          const { error } = await supabase
+            .from("evaluation_types" as any)
             .insert([{ name, active, description, tenant_id: profile.tenant_id, is_standard: false }]);
           if (error) throw error;
         }
@@ -503,6 +514,10 @@ export function MasterDataSettings() {
             <CalendarCheck className="h-4 w-4" />
             Tipos de Evento
           </TabsTrigger>
+          <TabsTrigger value="evaluation_types" className="flex items-center gap-2">
+            <ClipboardCheck className="h-4 w-4" />
+            Tipos de Evaluación
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="document_types">
@@ -598,6 +613,16 @@ export function MasterDataSettings() {
             title="Tipos de Evento"
             description="Los tipos estándar están disponibles para todos. Puedes agregar tipos personalizados."
             icon={<CalendarCheck className="h-5 w-5 text-muted-foreground" />}
+            hasStandardItems={true}
+          />
+        </TabsContent>
+
+        <TabsContent value="evaluation_types">
+          <MasterDataList
+            type={"evaluation_types" as MasterDataType}
+            title="Tipos de Evaluación"
+            description="Los tipos estándar están disponibles para todos. Puedes agregar tipos personalizados."
+            icon={<ClipboardCheck className="h-5 w-5 text-muted-foreground" />}
             hasStandardItems={true}
           />
         </TabsContent>
