@@ -329,79 +329,6 @@ export type Database = {
           },
         ]
       }
-      competency_evaluations: {
-        Row: {
-          action_plan: string | null
-          actual_level: number
-          competency_name: string
-          created_at: string | null
-          created_by: string | null
-          employee_id: string
-          evaluation_date: string
-          evaluator_id: string | null
-          expected_level: number
-          gap: number | null
-          id: string
-          status: Database["public"]["Enums"]["evaluation_status"] | null
-          tenant_id: string
-          updated_at: string | null
-        }
-        Insert: {
-          action_plan?: string | null
-          actual_level: number
-          competency_name: string
-          created_at?: string | null
-          created_by?: string | null
-          employee_id: string
-          evaluation_date: string
-          evaluator_id?: string | null
-          expected_level: number
-          gap?: number | null
-          id?: string
-          status?: Database["public"]["Enums"]["evaluation_status"] | null
-          tenant_id: string
-          updated_at?: string | null
-        }
-        Update: {
-          action_plan?: string | null
-          actual_level?: number
-          competency_name?: string
-          created_at?: string | null
-          created_by?: string | null
-          employee_id?: string
-          evaluation_date?: string
-          evaluator_id?: string | null
-          expected_level?: number
-          gap?: number | null
-          id?: string
-          status?: Database["public"]["Enums"]["evaluation_status"] | null
-          tenant_id?: string
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "competency_evaluations_employee_id_fkey"
-            columns: ["employee_id"]
-            isOneToOne: false
-            referencedRelation: "employees"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "competency_evaluations_evaluator_id_fkey"
-            columns: ["evaluator_id"]
-            isOneToOne: false
-            referencedRelation: "employees"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "competency_evaluations_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "tenants"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       course_providers: {
         Row: {
           active: boolean | null
@@ -822,6 +749,304 @@ export type Database = {
           },
           {
             foreignKeyName: "employees_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      evaluation_responses: {
+        Row: {
+          comments: string | null
+          created_at: string | null
+          criterion_id: string
+          evaluation_id: string
+          id: string
+          score: number | null
+        }
+        Insert: {
+          comments?: string | null
+          created_at?: string | null
+          criterion_id: string
+          evaluation_id: string
+          id?: string
+          score?: number | null
+        }
+        Update: {
+          comments?: string | null
+          created_at?: string | null
+          criterion_id?: string
+          evaluation_id?: string
+          id?: string
+          score?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "evaluation_responses_criterion_id_fkey"
+            columns: ["criterion_id"]
+            isOneToOne: false
+            referencedRelation: "evaluation_template_criteria"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "evaluation_responses_evaluation_id_fkey"
+            columns: ["evaluation_id"]
+            isOneToOne: false
+            referencedRelation: "evaluations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      evaluation_template_criteria: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          name: string
+          section_id: string
+          sort_order: number
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name: string
+          section_id: string
+          sort_order?: number
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+          section_id?: string
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "evaluation_template_criteria_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "evaluation_template_sections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      evaluation_template_sections: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          name: string
+          sort_order: number
+          template_id: string
+          weight: number
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name: string
+          sort_order?: number
+          template_id: string
+          weight?: number
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+          sort_order?: number
+          template_id?: string
+          weight?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "evaluation_template_sections_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "evaluation_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      evaluation_templates: {
+        Row: {
+          active: boolean | null
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          evaluation_type: string
+          id: string
+          is_anonymous: boolean | null
+          name: string
+          periodicity: string | null
+          scale_max: number
+          scale_min: number
+          tenant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          active?: boolean | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          evaluation_type: string
+          id?: string
+          is_anonymous?: boolean | null
+          name: string
+          periodicity?: string | null
+          scale_max?: number
+          scale_min?: number
+          tenant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          active?: boolean | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          evaluation_type?: string
+          id?: string
+          is_anonymous?: boolean | null
+          name?: string
+          periodicity?: string | null
+          scale_max?: number
+          scale_min?: number
+          tenant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "evaluation_templates_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      evaluation_types: {
+        Row: {
+          active: boolean | null
+          created_at: string | null
+          description: string | null
+          id: string
+          is_standard: boolean | null
+          name: string
+          tenant_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          active?: boolean | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_standard?: boolean | null
+          name: string
+          tenant_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          active?: boolean | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_standard?: boolean | null
+          name?: string
+          tenant_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "evaluation_types_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      evaluations: {
+        Row: {
+          action_plan: string | null
+          areas_improvement: string | null
+          comments: string | null
+          created_at: string | null
+          created_by: string | null
+          employee_id: string
+          evaluation_date: string
+          evaluator_id: string | null
+          id: string
+          overall_score: number | null
+          period: string
+          status: Database["public"]["Enums"]["evaluation_status"] | null
+          strengths: string | null
+          template_id: string
+          tenant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          action_plan?: string | null
+          areas_improvement?: string | null
+          comments?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          employee_id: string
+          evaluation_date: string
+          evaluator_id?: string | null
+          id?: string
+          overall_score?: number | null
+          period: string
+          status?: Database["public"]["Enums"]["evaluation_status"] | null
+          strengths?: string | null
+          template_id: string
+          tenant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          action_plan?: string | null
+          areas_improvement?: string | null
+          comments?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          employee_id?: string
+          evaluation_date?: string
+          evaluator_id?: string | null
+          id?: string
+          overall_score?: number | null
+          period?: string
+          status?: Database["public"]["Enums"]["evaluation_status"] | null
+          strengths?: string | null
+          template_id?: string
+          tenant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "evaluations_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "evaluations_evaluator_id_fkey"
+            columns: ["evaluator_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "evaluations_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "evaluation_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "evaluations_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
@@ -1299,88 +1524,6 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "pending_summary_notifications_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "tenants"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      performance_evaluations: {
-        Row: {
-          areas_improvement: string | null
-          comments: string | null
-          created_at: string | null
-          created_by: string | null
-          employee_id: string
-          employee_signature_url: string | null
-          evaluation_date: string
-          evaluator_id: string | null
-          evaluator_signature_url: string | null
-          goals: string | null
-          id: string
-          overall_score: number | null
-          period: string
-          status: Database["public"]["Enums"]["evaluation_status"] | null
-          strengths: string | null
-          tenant_id: string
-          updated_at: string | null
-        }
-        Insert: {
-          areas_improvement?: string | null
-          comments?: string | null
-          created_at?: string | null
-          created_by?: string | null
-          employee_id: string
-          employee_signature_url?: string | null
-          evaluation_date: string
-          evaluator_id?: string | null
-          evaluator_signature_url?: string | null
-          goals?: string | null
-          id?: string
-          overall_score?: number | null
-          period: string
-          status?: Database["public"]["Enums"]["evaluation_status"] | null
-          strengths?: string | null
-          tenant_id: string
-          updated_at?: string | null
-        }
-        Update: {
-          areas_improvement?: string | null
-          comments?: string | null
-          created_at?: string | null
-          created_by?: string | null
-          employee_id?: string
-          employee_signature_url?: string | null
-          evaluation_date?: string
-          evaluator_id?: string | null
-          evaluator_signature_url?: string | null
-          goals?: string | null
-          id?: string
-          overall_score?: number | null
-          period?: string
-          status?: Database["public"]["Enums"]["evaluation_status"] | null
-          strengths?: string | null
-          tenant_id?: string
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "performance_evaluations_employee_id_fkey"
-            columns: ["employee_id"]
-            isOneToOne: false
-            referencedRelation: "employees"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "performance_evaluations_evaluator_id_fkey"
-            columns: ["evaluator_id"]
-            isOneToOne: false
-            referencedRelation: "employees"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "performance_evaluations_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
