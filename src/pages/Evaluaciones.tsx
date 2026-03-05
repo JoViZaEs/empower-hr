@@ -254,6 +254,7 @@ export default function Evaluaciones() {
           </CardContent>
         </Card>
       </div>
+      <EvaluacionForm open={showForm} onOpenChange={setShowForm} />
     </MainLayout>
   );
 }
