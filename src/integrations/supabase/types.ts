@@ -763,6 +763,7 @@ export type Database = {
           criterion_id: string
           evaluation_id: string
           id: string
+          response_value: string | null
           score: number | null
         }
         Insert: {
@@ -771,6 +772,7 @@ export type Database = {
           criterion_id: string
           evaluation_id: string
           id?: string
+          response_value?: string | null
           score?: number | null
         }
         Update: {
@@ -779,6 +781,7 @@ export type Database = {
           criterion_id?: string
           evaluation_id?: string
           id?: string
+          response_value?: string | null
           score?: number | null
         }
         Relationships: [
@@ -800,26 +803,35 @@ export type Database = {
       }
       evaluation_template_criteria: {
         Row: {
+          correct_answer: string | null
           created_at: string | null
           description: string | null
           id: string
           name: string
+          options: Json | null
+          response_type: string
           section_id: string
           sort_order: number
         }
         Insert: {
+          correct_answer?: string | null
           created_at?: string | null
           description?: string | null
           id?: string
           name: string
+          options?: Json | null
+          response_type?: string
           section_id: string
           sort_order?: number
         }
         Update: {
+          correct_answer?: string | null
           created_at?: string | null
           description?: string | null
           id?: string
           name?: string
+          options?: Json | null
+          response_type?: string
           section_id?: string
           sort_order?: number
         }
