@@ -98,10 +98,10 @@ export function Sidebar() {
         {/* Logo */}
         <div className="flex h-16 items-center justify-between border-b border-sidebar-border px-4">
           <div className="flex items-center gap-3">
-            <img src={nexurhIcon} alt="NexuRH" className="h-10 w-10" />
+            <img src={nexurhIcon} alt="NexuHR" className="h-10 w-10" />
             {!collapsed && (
               <div className="animate-fade-in">
-                <h1 className="text-lg font-bold text-sidebar-foreground">NexuRH</h1>
+                <h1 className="text-lg font-bold text-sidebar-foreground">NexuHR</h1>
                 <p className="text-xs text-sidebar-foreground/60">Gestión de RRHH</p>
               </div>
             )}
