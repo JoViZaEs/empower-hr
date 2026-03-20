@@ -135,9 +135,9 @@ export default function Auth() {
     <div className="min-h-screen bg-gradient-to-br from-primary/10 via-background to-secondary/10 flex items-center justify-center p-4">
       <Card className="w-full max-w-md shadow-2xl border-border/50">
         <CardHeader className="text-center space-y-4">
-          <img src={nexurhIcon} alt="NexuRH" className="mx-auto w-16 h-16" />
+          <img src={nexurhIcon} alt="NexuHR" className="mx-auto w-16 h-16" />
           <div>
-            <CardTitle className="text-2xl font-bold">NexuRH</CardTitle>
+            <CardTitle className="text-2xl font-bold">NexuHR</CardTitle>
             <CardDescription>Sistema de Gestión de Recursos Humanos</CardDescription>
           </div>
         </CardHeader>
