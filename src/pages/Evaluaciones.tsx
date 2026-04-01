@@ -42,7 +42,7 @@ export default function Evaluaciones() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("evaluations")
-        .select("*, evaluation_templates(name, evaluation_type, scale_max), employees(first_name, last_name, position)")
+        .select("*, evaluation_templates(name, evaluation_type, scale_max), employees!evaluations_employee_id_fkey(first_name, last_name, position)")
         .order("evaluation_date", { ascending: false });
       if (error) throw error;
       return data;
