@@ -17,6 +17,7 @@ import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { Plus, Search, ClipboardCheck, TrendingUp, Users, Loader2, Star, FileX, LayoutTemplate } from "lucide-react";
 import { EvaluacionForm } from "@/components/evaluaciones/EvaluacionForm";
+import { EvaluacionExecForm } from "@/components/evaluaciones/EvaluacionExecForm";
 import { PlantillaForm } from "@/components/evaluaciones/PlantillaForm";
 import { PlantillasList } from "@/components/evaluaciones/PlantillasList";
 
@@ -32,6 +33,8 @@ export default function Evaluaciones() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [showForm, setShowForm] = useState(false);
   const [showPlantillaForm, setShowPlantillaForm] = useState(false);
+  const [showExecForm, setShowExecForm] = useState(false);
+  const [selectedEvalId, setSelectedEvalId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("evaluaciones");
 
   const { data: evaluations, isLoading } = useQuery({
@@ -39,7 +42,7 @@ export default function Evaluaciones() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("evaluations")
-        .select("*, evaluation_templates(name, evaluation_type, scale_max), employees(first_name, last_name, position)")
+        .select("*, evaluation_templates(name, evaluation_type, scale_max), employees!evaluations_employee_id_fkey(first_name, last_name, position)")
         .order("evaluation_date", { ascending: false });
       if (error) throw error;
       return data;
@@ -249,7 +252,9 @@ export default function Evaluaciones() {
                             </Badge>
                           </TableCell>
                           <TableCell className="text-right">
-                            <Button variant="ghost" size="sm">Ver Detalle</Button>
+                            <Button variant="ghost" size="sm" onClick={() => { setSelectedEvalId(eval_.id); setShowExecForm(true); }}>
+                              {eval_.status === "completada" ? "Ver Detalle" : "Evaluar"}
+                            </Button>
                           </TableCell>
                         </TableRow>
                       ))}
@@ -268,6 +273,7 @@ export default function Evaluaciones() {
 
       <EvaluacionForm open={showForm} onOpenChange={setShowForm} />
       <PlantillaForm open={showPlantillaForm} onOpenChange={setShowPlantillaForm} />
+      <EvaluacionExecForm open={showExecForm} onOpenChange={setShowExecForm} evaluationId={selectedEvalId} />
     </MainLayout>
   );
 }
