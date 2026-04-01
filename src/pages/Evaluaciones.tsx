@@ -252,7 +252,9 @@ export default function Evaluaciones() {
                             </Badge>
                           </TableCell>
                           <TableCell className="text-right">
-                            <Button variant="ghost" size="sm">Ver Detalle</Button>
+                            <Button variant="ghost" size="sm" onClick={() => { setSelectedEvalId(eval_.id); setShowExecForm(true); }}>
+                              {eval_.status === "completada" ? "Ver Detalle" : "Evaluar"}
+                            </Button>
                           </TableCell>
                         </TableRow>
                       ))}
