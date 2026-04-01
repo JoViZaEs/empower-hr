@@ -17,6 +17,7 @@ import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { Plus, Search, ClipboardCheck, TrendingUp, Users, Loader2, Star, FileX, LayoutTemplate } from "lucide-react";
 import { EvaluacionForm } from "@/components/evaluaciones/EvaluacionForm";
+import { EvaluacionExecForm } from "@/components/evaluaciones/EvaluacionExecForm";
 import { PlantillaForm } from "@/components/evaluaciones/PlantillaForm";
 import { PlantillasList } from "@/components/evaluaciones/PlantillasList";
 
