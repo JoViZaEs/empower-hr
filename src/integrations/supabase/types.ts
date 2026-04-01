@@ -2057,6 +2057,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      calculate_evaluation_score: {
+        Args: { _evaluation_id: string }
+        Returns: number
+      }
       get_user_notification_preferences: {
         Args: { _user_id: string }
         Returns: {
