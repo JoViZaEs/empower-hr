@@ -54,7 +54,7 @@ export function EvaluacionExecForm({ open, onOpenChange, evaluationId }: Evaluac
 
       const { data: eval_, error: evalErr } = await supabase
         .from("evaluations")
-        .select("*, evaluation_templates(*, evaluation_template_sections(*, evaluation_template_criteria(*))), employees(first_name, last_name, position)")
+        .select("*, evaluation_templates(*, evaluation_template_sections(*, evaluation_template_criteria(*))), employees!evaluations_employee_id_fkey(first_name, last_name, position)")
         .eq("id", evaluationId)
         .single();
       if (evalErr) throw evalErr;
