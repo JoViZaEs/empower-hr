@@ -33,6 +33,8 @@ export default function Evaluaciones() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [showForm, setShowForm] = useState(false);
   const [showPlantillaForm, setShowPlantillaForm] = useState(false);
+  const [showExecForm, setShowExecForm] = useState(false);
+  const [selectedEvalId, setSelectedEvalId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("evaluaciones");
 
   const { data: evaluations, isLoading } = useQuery({
