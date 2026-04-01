@@ -1,51 +1,81 @@
 
 
-## Plan: Módulo de Eventos y Firmas
+## What's Missing in the Evaluations Module
 
-### Contexto
-La página de Eventos actualmente usa datos hardcodeados. Necesitamos crear las tablas en la base de datos, conectar el frontend y permitir CRUD completo con gestión de participantes y firmas.
+### Currently Implemented
+- Template creation (sections, criteria, response types, correct answers)
+- Templates list with activate/deactivate
+- Evaluation creation (assign template to employee)
+- Evaluation listing with stats and filters
+- Employee evaluation history
 
-### 1. Migración de base de datos
+### What's Missing
 
-Crear tres tablas:
+#### 1. Evaluation Execution Form (Critical)
+The core flow: when an evaluator clicks "Ver Detalle" on an evaluation, there's no form to actually **answer** the questions. Need a full-page or dialog that:
+- Loads the template's sections and criteria
+- Renders the correct input per `response_type` (scale slider, radio buttons, checkboxes, yes/no toggle, text area)
+- Saves responses to `evaluation_responses` table
+- Auto-calculates `overall_score` based on section weights and correct answers
+- Allows saving as draft (`en_proceso`) or completing (`completada`)
+- Shows strengths, areas for improvement, and action plan fields
 
-- **`event_types`** - Tipos de evento parametrizables (patrón estándar/custom como los demás maestros). Tipos por defecto: Inducción, Reinducción, Capacitación, Reunión, Simulacro.
+#### 2. Automatic Scoring Engine
+- Compare responses against `correct_answer` for single_choice, multiple_choice, yes_no
+- Calculate weighted score per section and overall score
+- Store in `evaluations.overall_score`
 
-- **`events`** - Tabla principal de eventos con campos: `tenant_id`, `title`, `event_type` (text), `event_date` (date), `description`, `location`, `status` (enum: borrador, en_progreso, completado, cancelado), `created_by`, timestamps. RLS con permisos granulares sobre módulo `eventos`.
+#### 3. Evaluation Detail View
+- Read-only view of a completed evaluation showing all responses, scores per section, and overall result
+- Visual score breakdown (bar/radar chart per section)
 
-- **`event_participants`** - Participantes por evento: `event_id`, `employee_id`, `signed` (boolean default false), `signature_url` (text), `signed_at` (timestamptz), `invited_at` (timestamptz default now()). RLS via evento padre (misma estrategia que `committee_members`).
+#### 4. Signature Integration
+- Connect to the existing Signatures module (`signatures` table with `module = 'evaluaciones'`)
+- Require evaluator and employee signatures upon completion
 
-### 2. Maestros - Tipos de Evento
+#### 5. Bulk/Mass Evaluation Assignment
+- Assign the same template to multiple employees at once (e.g., "Apply annual review to all active employees")
 
-Agregar pestaña "Tipos de Evento" en `MasterDataSettings.tsx` siguiendo el mismo patrón que Tipos de Dotación y Roles de Comité.
+#### 6. Reporting & Analytics
+- Gap analysis: compare scores across employees, departments, periods
+- Trend charts over time per employee
+- Export results to CSV/PDF
+- Aggregated results for climate surveys (anonymous)
 
-### 3. Formulario de Evento (`EventoForm.tsx`)
+#### 7. Edit/Delete for Templates and Evaluations
+- Edit existing templates (currently only create + toggle active)
+- Delete templates (with confirmation)
+- Edit/cancel evaluations
 
-Formulario en dialog para crear/editar eventos:
-- Título, tipo (select dinámico desde `event_types`), fecha, descripción, ubicación
-- Selector múltiple de empleados para agregar participantes al crear
+#### 8. Alert Integration
+- Automated notifications based on template periodicity (e.g., "Annual evaluation due for 15 employees")
+- Integrate with `generate-notifications` edge function
 
-### 4. Detalle de Evento (`EventoDetailDialog.tsx`)
+### Recommended Priority
 
-Dialog para gestionar un evento:
-- Ver lista de participantes con estado de firma (firmado/pendiente)
-- Agregar más participantes
-- Marcar firmas individuales
-- Barra de progreso de firmas
+| Priority | Feature | Effort |
+|----------|---------|--------|
+| 1 | Evaluation Execution Form | High |
+| 2 | Automatic Scoring | Medium |
+| 3 | Evaluation Detail View | Medium |
+| 4 | Signature Integration | Low |
+| 5 | Edit/Delete Templates | Low |
+| 6 | Bulk Assignment | Medium |
+| 7 | Reporting & Analytics | High |
+| 8 | Alert Integration | Medium |
 
-### 5. Página principal (`Eventos.tsx`)
+### Technical Details
 
-Reemplazar datos mock con queries reales:
-- Stats dinámicas (eventos activos, firmas recolectadas, pendientes, participantes totales)
-- Lista de eventos con tabs funcionales (Todos, En progreso, Completados)
-- Panel lateral de firmas pendientes con datos reales
-- Botones de crear, editar, eliminar eventos
+**Execution Form** - New component `EvaluacionExecForm.tsx`:
+- Fetches template structure via `evaluation_templates` → `sections` → `criteria`
+- Renders dynamic form based on `response_type`
+- Upserts to `evaluation_responses` (one row per criterion)
+- Updates `evaluations` status and `overall_score` on submit
 
-### 6. Tipos de datos en `types.ts`
+**Scoring** - DB function `calculate_evaluation_score(evaluation_id)`:
+- Joins responses with criteria and sections
+- Applies weights per section
+- Returns normalized score on the template's scale
 
-Se actualizará automáticamente tras la migración.
-
-### Archivos a crear/editar
-- **Crear**: migración SQL, `src/components/eventos/EventoForm.tsx`, `src/components/eventos/EventoDetailDialog.tsx`
-- **Editar**: `src/pages/Eventos.tsx`, `src/components/settings/MasterDataSettings.tsx`, `src/integrations/supabase/types.ts`
+**Signatures** - Reuse existing `SignatureDialog` component with `module='evaluaciones'` and `record_id=evaluation.id`
 
