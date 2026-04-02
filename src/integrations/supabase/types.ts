@@ -886,6 +886,7 @@ export type Database = {
       evaluation_templates: {
         Row: {
           active: boolean | null
+          assignment_mode: string
           created_at: string | null
           created_by: string | null
           description: string | null
@@ -901,6 +902,7 @@ export type Database = {
         }
         Insert: {
           active?: boolean | null
+          assignment_mode?: string
           created_at?: string | null
           created_by?: string | null
           description?: string | null
@@ -916,6 +918,7 @@ export type Database = {
         }
         Update: {
           active?: boolean | null
+          assignment_mode?: string
           created_at?: string | null
           created_by?: string | null
           description?: string | null
