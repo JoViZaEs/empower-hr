@@ -259,9 +259,31 @@ export function PlantillaForm({ open, onOpenChange }: PlantillaFormProps) {
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
-            <Switch checked={isAnonymous} onCheckedChange={setIsAnonymous} />
-            <Label>Evaluación anónima</Label>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Modo de Asignación *</Label>
+              <Select value={assignmentMode} onValueChange={setAssignmentMode}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="individual">Individual</SelectItem>
+                  <SelectItem value="bulk">Selección múltiple</SelectItem>
+                  <SelectItem value="department">Por departamento</SelectItem>
+                  <SelectItem value="self">Auto-evaluación</SelectItem>
+                  <SelectItem value="360">360°</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                {assignmentMode === "individual" && "Se asigna a un empleado a la vez"}
+                {assignmentMode === "bulk" && "Se seleccionan múltiples empleados al crear la evaluación"}
+                {assignmentMode === "department" && "Se asigna a todos los empleados de un departamento"}
+                {assignmentMode === "self" && "El empleado se evalúa a sí mismo"}
+                {assignmentMode === "360" && "Múltiples evaluadores evalúan al mismo empleado"}
+              </p>
+            </div>
+            <div className="flex items-center gap-3 pt-6">
+              <Switch checked={isAnonymous} onCheckedChange={setIsAnonymous} />
+              <Label>Evaluación anónima</Label>
+            </div>
           </div>
 
           {/* Sections */}
