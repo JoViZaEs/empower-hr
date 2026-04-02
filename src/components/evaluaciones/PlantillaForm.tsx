@@ -189,6 +189,7 @@ export function PlantillaForm({ open, onOpenChange }: PlantillaFormProps) {
     setScaleMin(1);
     setScaleMax(5);
     setIsAnonymous(false);
+    setAssignmentMode("individual");
     setSections([]);
   };
 
