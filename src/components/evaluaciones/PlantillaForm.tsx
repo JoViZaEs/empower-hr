@@ -52,6 +52,7 @@ export function PlantillaForm({ open, onOpenChange }: PlantillaFormProps) {
   const [scaleMin, setScaleMin] = useState(1);
   const [scaleMax, setScaleMax] = useState(5);
   const [isAnonymous, setIsAnonymous] = useState(false);
+  const [assignmentMode, setAssignmentMode] = useState("individual");
   const [sections, setSections] = useState<Section[]>([]);
 
   const { data: evalTypes } = useQuery({
