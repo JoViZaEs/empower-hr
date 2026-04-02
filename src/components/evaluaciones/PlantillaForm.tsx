@@ -126,6 +126,7 @@ export function PlantillaForm({ open, onOpenChange }: PlantillaFormProps) {
           scale_min: scaleMin,
           scale_max: scaleMax,
           is_anonymous: isAnonymous,
+          assignment_mode: assignmentMode,
           created_by: profile?.user_id,
         })
         .select("id")
