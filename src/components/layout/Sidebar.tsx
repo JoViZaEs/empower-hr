@@ -15,7 +15,8 @@ import {
   Building2,
   LogOut,
   ClipboardCheck,
-  
+  Banknote,
+  BookOpen,
   Mail,
   
   LucideIcon,
