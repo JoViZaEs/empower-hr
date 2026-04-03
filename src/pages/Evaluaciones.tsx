@@ -18,6 +18,7 @@ import { es } from "date-fns/locale";
 import { Plus, Search, ClipboardCheck, TrendingUp, Users, Loader2, Star, FileX, LayoutTemplate } from "lucide-react";
 import { EvaluacionForm } from "@/components/evaluaciones/EvaluacionForm";
 import { EvaluacionExecForm } from "@/components/evaluaciones/EvaluacionExecForm";
+import { EvaluacionReport } from "@/components/evaluaciones/EvaluacionReport";
 import { PlantillaForm } from "@/components/evaluaciones/PlantillaForm";
 import { PlantillasList } from "@/components/evaluaciones/PlantillasList";
 
@@ -35,6 +36,7 @@ export default function Evaluaciones() {
   const [showPlantillaForm, setShowPlantillaForm] = useState(false);
   const [showExecForm, setShowExecForm] = useState(false);
   const [selectedEvalId, setSelectedEvalId] = useState<string | null>(null);
+  const [showReportId, setShowReportId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("evaluaciones");
 
   const { data: evaluations, isLoading } = useQuery({
@@ -252,8 +254,15 @@ export default function Evaluaciones() {
                             </Badge>
                           </TableCell>
                           <TableCell className="text-right">
-                            <Button variant="ghost" size="sm" onClick={() => { setSelectedEvalId(eval_.id); setShowExecForm(true); }}>
-                              {eval_.status === "completada" ? "Ver Detalle" : "Evaluar"}
+                            <Button variant="ghost" size="sm" onClick={() => {
+                              if (eval_.status === "completada") {
+                                setShowReportId(eval_.id);
+                              } else {
+                                setSelectedEvalId(eval_.id);
+                                setShowExecForm(true);
+                              }
+                            }}>
+                              {eval_.status === "completada" ? "Ver Informe" : "Evaluar"}
                             </Button>
                           </TableCell>
                         </TableRow>
@@ -274,6 +283,7 @@ export default function Evaluaciones() {
       <EvaluacionForm open={showForm} onOpenChange={setShowForm} />
       <PlantillaForm open={showPlantillaForm} onOpenChange={setShowPlantillaForm} />
       <EvaluacionExecForm open={showExecForm} onOpenChange={setShowExecForm} evaluationId={selectedEvalId} />
+      <EvaluacionReport open={!!showReportId} onOpenChange={(v) => { if (!v) setShowReportId(null); }} evaluationId={showReportId} />
     </MainLayout>
   );
 }
