@@ -283,6 +283,7 @@ export default function Evaluaciones() {
       <EvaluacionForm open={showForm} onOpenChange={setShowForm} />
       <PlantillaForm open={showPlantillaForm} onOpenChange={setShowPlantillaForm} />
       <EvaluacionExecForm open={showExecForm} onOpenChange={setShowExecForm} evaluationId={selectedEvalId} />
+      <EvaluacionReport open={!!showReportId} onOpenChange={(v) => { if (!v) setShowReportId(null); }} evaluationId={showReportId} />
     </MainLayout>
   );
 }
