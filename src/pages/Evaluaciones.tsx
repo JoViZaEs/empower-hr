@@ -36,6 +36,7 @@ export default function Evaluaciones() {
   const [showPlantillaForm, setShowPlantillaForm] = useState(false);
   const [showExecForm, setShowExecForm] = useState(false);
   const [selectedEvalId, setSelectedEvalId] = useState<string | null>(null);
+  const [showReportId, setShowReportId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("evaluaciones");
 
   const { data: evaluations, isLoading } = useQuery({
