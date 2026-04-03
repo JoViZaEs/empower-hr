@@ -225,7 +225,9 @@ export function RegulationViewer({ open, onOpenChange, regulationId }: Props) {
           module="reglamento"
           recordId={regulationId || ""}
           employeeId={acknowledgment.employeeId}
-          onSuccess={handleSignatureComplete}
+          employeeName=""
+          tenantId={profile?.tenant_id || ""}
+          onSuccess={handleSignatureSuccess}
         />
       )}
     </>
