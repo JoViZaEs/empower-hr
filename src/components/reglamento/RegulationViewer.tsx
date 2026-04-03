@@ -100,34 +100,25 @@ export function RegulationViewer({ open, onOpenChange, regulationId }: Props) {
 
   const canSign = hasScrolledToBottom && !isAlreadySigned && regulation?.requires_signature && regulation?.status === "publicado" && acknowledgment?.employeeId;
 
-  const signMutation = useMutation({
-    mutationFn: async (signatureUrl: string) => {
-      if (!acknowledgment?.employeeId || !regulationId) throw new Error("Datos incompletos");
-
-      // Upsert acknowledgment
-      const { error } = await supabase
+  const handleSignatureSuccess = async () => {
+    if (!acknowledgment?.employeeId || !regulationId) return;
+    try {
+      await supabase
         .from("regulation_acknowledgments")
         .upsert({
           tenant_id: profile?.tenant_id!,
           regulation_id: regulationId,
           employee_id: acknowledgment.employeeId,
           acknowledged_at: new Date().toISOString(),
-          signature_url: signatureUrl,
           status: "firmado",
         }, { onConflict: "regulation_id,employee_id" });
-      if (error) throw error;
-    },
-    onSuccess: () => {
       toast.success("Reglamento firmado exitosamente");
       queryClient.invalidateQueries({ queryKey: ["my-acknowledgment", regulationId] });
       queryClient.invalidateQueries({ queryKey: ["regulation-acknowledgments"] });
-      setShowSignature(false);
-    },
-    onError: (err: any) => toast.error("Error: " + err.message),
-  });
-
-  const handleSignatureComplete = (signatureUrl: string) => {
-    signMutation.mutate(signatureUrl);
+    } catch (err: any) {
+      toast.error("Error al registrar acuse: " + err.message);
+    }
+    setShowSignature(false);
   };
 
   const scrollProgress = (() => {
