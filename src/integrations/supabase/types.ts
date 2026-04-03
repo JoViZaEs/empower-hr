@@ -61,6 +61,50 @@ export type Database = {
           },
         ]
       }
+      certificate_templates: {
+        Row: {
+          active: boolean | null
+          content_template: string
+          created_at: string | null
+          created_by: string | null
+          id: string
+          name: string
+          template_type: string
+          tenant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          active?: boolean | null
+          content_template: string
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          name: string
+          template_type?: string
+          tenant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          active?: boolean | null
+          content_template?: string
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          name?: string
+          template_type?: string
+          tenant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "certificate_templates_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       committee_meetings: {
         Row: {
           agenda: string | null
@@ -659,6 +703,81 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "dotacion_types_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      employee_contracts: {
+        Row: {
+          active: boolean | null
+          base_salary: number
+          contract_type: string
+          created_at: string | null
+          created_by: string | null
+          currency: string
+          department: string | null
+          employee_id: string
+          end_date: string | null
+          id: string
+          observations: string | null
+          payment_frequency: string
+          position: string | null
+          start_date: string
+          tenant_id: string
+          updated_at: string | null
+          work_hours_per_week: number | null
+        }
+        Insert: {
+          active?: boolean | null
+          base_salary?: number
+          contract_type?: string
+          created_at?: string | null
+          created_by?: string | null
+          currency?: string
+          department?: string | null
+          employee_id: string
+          end_date?: string | null
+          id?: string
+          observations?: string | null
+          payment_frequency?: string
+          position?: string | null
+          start_date: string
+          tenant_id: string
+          updated_at?: string | null
+          work_hours_per_week?: number | null
+        }
+        Update: {
+          active?: boolean | null
+          base_salary?: number
+          contract_type?: string
+          created_at?: string | null
+          created_by?: string | null
+          currency?: string
+          department?: string | null
+          employee_id?: string
+          end_date?: string | null
+          id?: string
+          observations?: string | null
+          payment_frequency?: string
+          position?: string | null
+          start_date?: string
+          tenant_id?: string
+          updated_at?: string | null
+          work_hours_per_week?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_contracts_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_contracts_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
@@ -1496,6 +1615,112 @@ export type Database = {
           },
         ]
       }
+      payroll_records: {
+        Row: {
+          base_salary: number
+          bonuses: number | null
+          commissions: number | null
+          contract_id: string | null
+          created_at: string | null
+          created_by: string | null
+          employee_id: string
+          health_deduction: number | null
+          id: string
+          net_pay: number | null
+          notes: string | null
+          other_deductions: number | null
+          other_earnings: number | null
+          overtime: number | null
+          payment_date: string | null
+          pension_deduction: number | null
+          period_month: number
+          period_year: number
+          status: string
+          tax_deduction: number | null
+          tenant_id: string
+          total_deductions: number | null
+          total_earnings: number | null
+          transport_allowance: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          base_salary?: number
+          bonuses?: number | null
+          commissions?: number | null
+          contract_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          employee_id: string
+          health_deduction?: number | null
+          id?: string
+          net_pay?: number | null
+          notes?: string | null
+          other_deductions?: number | null
+          other_earnings?: number | null
+          overtime?: number | null
+          payment_date?: string | null
+          pension_deduction?: number | null
+          period_month: number
+          period_year: number
+          status?: string
+          tax_deduction?: number | null
+          tenant_id: string
+          total_deductions?: number | null
+          total_earnings?: number | null
+          transport_allowance?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          base_salary?: number
+          bonuses?: number | null
+          commissions?: number | null
+          contract_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          employee_id?: string
+          health_deduction?: number | null
+          id?: string
+          net_pay?: number | null
+          notes?: string | null
+          other_deductions?: number | null
+          other_earnings?: number | null
+          overtime?: number | null
+          payment_date?: string | null
+          pension_deduction?: number | null
+          period_month?: number
+          period_year?: number
+          status?: string
+          tax_deduction?: number | null
+          tenant_id?: string
+          total_deductions?: number | null
+          total_earnings?: number | null
+          transport_allowance?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payroll_records_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "employee_contracts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payroll_records_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payroll_records_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pending_summary_notifications: {
         Row: {
           created_at: string | null
@@ -1662,6 +1887,129 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "profiles_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      regulation_acknowledgments: {
+        Row: {
+          acknowledged_at: string | null
+          created_at: string | null
+          employee_id: string
+          id: string
+          ip_address: string | null
+          regulation_id: string
+          signature_url: string | null
+          status: string
+          tenant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          acknowledged_at?: string | null
+          created_at?: string | null
+          employee_id: string
+          id?: string
+          ip_address?: string | null
+          regulation_id: string
+          signature_url?: string | null
+          status?: string
+          tenant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          acknowledged_at?: string | null
+          created_at?: string | null
+          employee_id?: string
+          id?: string
+          ip_address?: string | null
+          regulation_id?: string
+          signature_url?: string | null
+          status?: string
+          tenant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "regulation_acknowledgments_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "regulation_acknowledgments_regulation_id_fkey"
+            columns: ["regulation_id"]
+            isOneToOne: false
+            referencedRelation: "regulations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "regulation_acknowledgments_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      regulations: {
+        Row: {
+          content_text: string | null
+          content_type: string
+          created_at: string | null
+          created_by: string | null
+          document_url: string | null
+          effective_date: string
+          id: string
+          published_at: string | null
+          published_by: string | null
+          requires_signature: boolean | null
+          status: string
+          tenant_id: string
+          title: string
+          updated_at: string | null
+          version: string
+        }
+        Insert: {
+          content_text?: string | null
+          content_type?: string
+          created_at?: string | null
+          created_by?: string | null
+          document_url?: string | null
+          effective_date?: string
+          id?: string
+          published_at?: string | null
+          published_by?: string | null
+          requires_signature?: boolean | null
+          status?: string
+          tenant_id: string
+          title: string
+          updated_at?: string | null
+          version?: string
+        }
+        Update: {
+          content_text?: string | null
+          content_type?: string
+          created_at?: string | null
+          created_by?: string | null
+          document_url?: string | null
+          effective_date?: string
+          id?: string
+          published_at?: string | null
+          published_by?: string | null
+          requires_signature?: boolean | null
+          status?: string
+          tenant_id?: string
+          title?: string
+          updated_at?: string | null
+          version?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "regulations_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"

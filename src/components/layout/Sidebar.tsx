@@ -15,7 +15,8 @@ import {
   Building2,
   LogOut,
   ClipboardCheck,
-  
+  Banknote,
+  BookOpen,
   Mail,
   
   LucideIcon,
@@ -47,6 +48,8 @@ const navigation: NavItem[] = [
   { name: "Centro de Firmas", href: "/firmas", icon: PenTool, moduleCode: "firmas" },
   { name: "Evaluaciones", href: "/evaluaciones", icon: ClipboardCheck, moduleCode: "evaluaciones" },
   { name: "Comunicaciones", href: "/comunicaciones", icon: Mail, moduleCode: "comunicaciones" },
+  { name: "Nómina", href: "/nomina", icon: Banknote, moduleCode: "nomina" },
+  { name: "Reglamento", href: "/reglamento", icon: BookOpen, moduleCode: "reglamento" },
 ];
 
 const bottomNav: NavItem[] = [
