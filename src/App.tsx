@@ -17,6 +17,8 @@ import Eventos from "./pages/Eventos";
 import Firmas from "./pages/Firmas";
 import Evaluaciones from "./pages/Evaluaciones";
 import Comunicaciones from "./pages/Comunicaciones";
+import Nomina from "./pages/Nomina";
+import Reglamento from "./pages/Reglamento";
 import Configuracion from "./pages/Configuracion";
 import Notificaciones from "./pages/Notificaciones";
 import Auth from "./pages/Auth";
