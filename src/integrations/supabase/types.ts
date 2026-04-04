@@ -1615,6 +1615,56 @@ export type Database = {
           },
         ]
       }
+      payroll_periods: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          end_date: string
+          frequency: string
+          id: string
+          name: string
+          payment_date: string | null
+          start_date: string
+          status: string
+          tenant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          end_date: string
+          frequency?: string
+          id?: string
+          name: string
+          payment_date?: string | null
+          start_date: string
+          status?: string
+          tenant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          end_date?: string
+          frequency?: string
+          id?: string
+          name?: string
+          payment_date?: string | null
+          start_date?: string
+          status?: string
+          tenant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payroll_periods_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payroll_records: {
         Row: {
           base_salary: number
@@ -1633,8 +1683,7 @@ export type Database = {
           overtime: number | null
           payment_date: string | null
           pension_deduction: number | null
-          period_month: number
-          period_year: number
+          period_id: string | null
           status: string
           tax_deduction: number | null
           tenant_id: string
@@ -1660,8 +1709,7 @@ export type Database = {
           overtime?: number | null
           payment_date?: string | null
           pension_deduction?: number | null
-          period_month: number
-          period_year: number
+          period_id?: string | null
           status?: string
           tax_deduction?: number | null
           tenant_id: string
@@ -1687,8 +1735,7 @@ export type Database = {
           overtime?: number | null
           payment_date?: string | null
           pension_deduction?: number | null
-          period_month?: number
-          period_year?: number
+          period_id?: string | null
           status?: string
           tax_deduction?: number | null
           tenant_id?: string
@@ -1710,6 +1757,13 @@ export type Database = {
             columns: ["employee_id"]
             isOneToOne: false
             referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payroll_records_period_id_fkey"
+            columns: ["period_id"]
+            isOneToOne: false
+            referencedRelation: "payroll_periods"
             referencedColumns: ["id"]
           },
           {

@@ -16,16 +16,11 @@ interface Props {
   onOpenChange: (open: boolean) => void;
 }
 
-const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
-const currentYear = new Date().getFullYear();
-const currentMonth = new Date().getMonth() + 1;
-
 export function PayrollBulkUpload({ open, onOpenChange }: Props) {
   const queryClient = useQueryClient();
   const { profile } = useAuth();
   const [file, setFile] = useState<File | null>(null);
-  const [year, setYear] = useState(currentYear.toString());
-  const [month, setMonth] = useState(currentMonth.toString());
+  const [periodId, setPeriodId] = useState("");
   const [preview, setPreview] = useState<any[]>([]);
 
   const { data: employees } = useQuery({
@@ -38,19 +33,34 @@ export function PayrollBulkUpload({ open, onOpenChange }: Props) {
     enabled: open,
   });
 
+  const { data: periods } = useQuery({
+    queryKey: ["payroll-periods"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("payroll_periods")
+        .select("*")
+        .eq("status", "abierto")
+        .order("start_date", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+    enabled: open,
+  });
+
+  const selectedPeriod = periods?.find((p: any) => p.id === periodId);
+
   const downloadTemplate = () => {
     const headers = ["documento_empleado", "salario_base", "auxilio_transporte", "horas_extra", "bonificaciones", "comisiones", "otros_devengados", "deduccion_salud", "deduccion_pension", "retencion_fuente", "otras_deducciones", "fecha_pago", "notas"];
     const wb = XLSX.utils.book_new();
-    const ws = XLSX.utils.aoa_to_sheet([headers, ["12345678", "1300000", "162000", "0", "0", "0", "0", "52000", "52000", "0", "0", "2026-04-30", ""]]);
+    const ws = XLSX.utils.aoa_to_sheet([headers, ["12345678", "1300000", "162000", "0", "0", "0", "0", "52000", "52000", "0", "0", selectedPeriod?.payment_date || "2026-04-30", ""]]);
     XLSX.utils.book_append_sheet(wb, ws, "Nómina");
-    XLSX.writeFile(wb, `plantilla_nomina_${year}_${month}.xlsx`);
+    XLSX.writeFile(wb, `plantilla_nomina_${selectedPeriod?.name || "periodo"}.xlsx`);
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
     if (!f) return;
     setFile(f);
-
     const reader = new FileReader();
     reader.onload = (evt) => {
       const wb = XLSX.read(evt.target?.result, { type: "binary" });
@@ -63,7 +73,7 @@ export function PayrollBulkUpload({ open, onOpenChange }: Props) {
 
   const mutation = useMutation({
     mutationFn: async () => {
-      if (!file || !employees) throw new Error("Sin archivo o empleados");
+      if (!file || !employees || !periodId) throw new Error("Sin archivo, período o empleados");
 
       const reader = new FileReader();
       const data: any[] = await new Promise((resolve) => {
@@ -84,8 +94,7 @@ export function PayrollBulkUpload({ open, onOpenChange }: Props) {
         return {
           tenant_id: profile?.tenant_id!,
           employee_id: empId,
-          period_year: parseInt(year),
-          period_month: parseInt(month),
+          period_id: periodId,
           base_salary: parseFloat(row.salario_base) || 0,
           transport_allowance: parseFloat(row.auxilio_transporte) || 0,
           overtime: parseFloat(row.horas_extra) || 0,
@@ -125,25 +134,19 @@ export function PayrollBulkUpload({ open, onOpenChange }: Props) {
           <DialogDescription>Sube un archivo Excel con los datos de nómina del período</DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-2">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Año</Label>
-              <Input type="number" value={year} onChange={e => setYear(e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label>Mes</Label>
-              <Select value={month} onValueChange={setMonth}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {monthNames.map((m, i) => (
-                    <SelectItem key={i} value={(i + 1).toString()}>{m}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+          <div className="space-y-2">
+            <Label>Período de Pago *</Label>
+            <Select value={periodId} onValueChange={setPeriodId}>
+              <SelectTrigger><SelectValue placeholder="Seleccionar período" /></SelectTrigger>
+              <SelectContent>
+                {periods?.map((p: any) => (
+                  <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
-          <Button variant="outline" className="gap-2 w-full" onClick={downloadTemplate}>
+          <Button variant="outline" className="gap-2 w-full" onClick={downloadTemplate} disabled={!periodId}>
             <Download className="h-4 w-4" />
             Descargar Plantilla Excel
           </Button>
@@ -172,7 +175,7 @@ export function PayrollBulkUpload({ open, onOpenChange }: Props) {
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button onClick={() => mutation.mutate()} disabled={!file || mutation.isPending} className="gap-2">
+          <Button onClick={() => mutation.mutate()} disabled={!file || !periodId || mutation.isPending} className="gap-2">
             {mutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
             Cargar Nómina
           </Button>

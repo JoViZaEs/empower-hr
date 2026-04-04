@@ -17,7 +17,7 @@ import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import {
   Plus, Search, Banknote, FileText, Users, Loader2, FileX,
-  Upload, Download, ScrollText,
+  Upload, Download, ScrollText, Calendar,
 } from "lucide-react";
 import { ContractForm } from "@/components/nomina/ContractForm";
 import { PayrollForm } from "@/components/nomina/PayrollForm";
@@ -25,6 +25,7 @@ import { PayrollBulkUpload } from "@/components/nomina/PayrollBulkUpload";
 import { PayslipDialog } from "@/components/nomina/PayslipDialog";
 import { CertificateTemplateForm } from "@/components/nomina/CertificateTemplateForm";
 import { CertificateGenerator } from "@/components/nomina/CertificateGenerator";
+import { PeriodForm } from "@/components/nomina/PeriodForm";
 
 const statusColor: Record<string, string> = {
   borrador: "bg-muted text-muted-foreground",
@@ -32,7 +33,10 @@ const statusColor: Record<string, string> = {
   pagado: "bg-primary/10 text-primary border-primary/20",
 };
 
-const monthNames = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+const periodStatusColor: Record<string, string> = {
+  abierto: "bg-success/10 text-success border-success/20",
+  cerrado: "bg-muted text-muted-foreground",
+};
 
 export default function Nomina() {
   const [activeTab, setActiveTab] = useState("nomina");
@@ -43,16 +47,28 @@ export default function Nomina() {
   const [showBulkUpload, setShowBulkUpload] = useState(false);
   const [showCertTemplateForm, setShowCertTemplateForm] = useState(false);
   const [showCertGenerator, setShowCertGenerator] = useState(false);
+  const [showPeriodForm, setShowPeriodForm] = useState(false);
   const [selectedPayrollId, setSelectedPayrollId] = useState<string | null>(null);
+
+  const { data: periods } = useQuery({
+    queryKey: ["payroll-periods"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("payroll_periods")
+        .select("*")
+        .order("start_date", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+  });
 
   const { data: payrollRecords, isLoading } = useQuery({
     queryKey: ["payroll-records"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("payroll_records")
-        .select("*, employees!payroll_records_employee_id_fkey(first_name, last_name, position, department)")
-        .order("period_year", { ascending: false })
-        .order("period_month", { ascending: false });
+        .select("*, employees!payroll_records_employee_id_fkey(first_name, last_name, position, department), payroll_periods!payroll_records_period_id_fkey(name)")
+        .order("created_at", { ascending: false });
       if (error) throw error;
       return data;
     },
@@ -82,12 +98,10 @@ export default function Nomina() {
     },
   });
 
-  const periods = [...new Set(payrollRecords?.map((r: any) => `${r.period_year}-${r.period_month}`) || [])];
-
   const filteredPayroll = payrollRecords?.filter((r: any) => {
     const matchesSearch = !searchTerm ||
       `${r.employees?.first_name} ${r.employees?.last_name}`.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesPeriod = periodFilter === "all" || `${r.period_year}-${r.period_month}` === periodFilter;
+    const matchesPeriod = periodFilter === "all" || r.period_id === periodFilter;
     return matchesSearch && matchesPeriod;
   });
 
@@ -108,7 +122,7 @@ export default function Nomina() {
           <div>
             <h1 className="text-2xl font-bold text-foreground">Nómina</h1>
             <p className="text-muted-foreground">
-              Gestión de contratos, nómina mensual y certificaciones laborales
+              Gestión de períodos, contratos, nómina y certificaciones laborales
             </p>
           </div>
           <div className="flex gap-2 flex-wrap">
@@ -123,6 +137,12 @@ export default function Nomina() {
                   Nuevo Registro
                 </Button>
               </>
+            )}
+            {activeTab === "periodos" && (
+              <Button className="gap-2" onClick={() => setShowPeriodForm(true)}>
+                <Plus className="h-4 w-4" />
+                Nuevo Período
+              </Button>
             )}
             {activeTab === "contratos" && (
               <Button className="gap-2" onClick={() => setShowContractForm(true)}>
@@ -150,6 +170,10 @@ export default function Nomina() {
             <TabsTrigger value="nomina" className="gap-2">
               <Banknote className="h-4 w-4" />
               Nómina
+            </TabsTrigger>
+            <TabsTrigger value="periodos" className="gap-2">
+              <Calendar className="h-4 w-4" />
+              Períodos
             </TabsTrigger>
             <TabsTrigger value="contratos" className="gap-2">
               <FileText className="h-4 w-4" />
@@ -218,15 +242,14 @@ export default function Nomina() {
                     <Input placeholder="Buscar empleado..." className="pl-10" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
                   </div>
                   <Select value={periodFilter} onValueChange={setPeriodFilter}>
-                    <SelectTrigger className="w-full sm:w-[180px]">
+                    <SelectTrigger className="w-full sm:w-[220px]">
                       <SelectValue placeholder="Período" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">Todos</SelectItem>
-                      {periods.map((p: string) => {
-                        const [y, m] = p.split("-");
-                        return <SelectItem key={p} value={p}>{monthNames[parseInt(m) - 1]} {y}</SelectItem>;
-                      })}
+                      <SelectItem value="all">Todos los períodos</SelectItem>
+                      {periods?.map((p: any) => (
+                        <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -261,7 +284,7 @@ export default function Nomina() {
                           <TableCell className="font-medium">
                             {r.employees?.first_name} {r.employees?.last_name}
                           </TableCell>
-                          <TableCell>{monthNames[r.period_month - 1]} {r.period_year}</TableCell>
+                          <TableCell>{(r.payroll_periods as any)?.name || "—"}</TableCell>
                           <TableCell className="text-right">{formatCurrency(r.total_earnings)}</TableCell>
                           <TableCell className="text-right text-destructive">{formatCurrency(r.total_deductions)}</TableCell>
                           <TableCell className="text-right font-bold">{formatCurrency(r.net_pay)}</TableCell>
@@ -274,6 +297,54 @@ export default function Nomina() {
                             <Button variant="ghost" size="sm" onClick={() => setSelectedPayrollId(r.id)}>
                               Desprendible
                             </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* PERÍODOS TAB */}
+          <TabsContent value="periodos" className="space-y-6 mt-4">
+            <Card>
+              <CardHeader><CardTitle>Períodos de Pago</CardTitle></CardHeader>
+              <CardContent>
+                {!periods?.length ? (
+                  <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+                    <FileX className="h-12 w-12 mb-2" /><p>No hay períodos creados</p>
+                    <p className="text-sm mt-1">Crea un período antes de cargar registros de nómina</p>
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Nombre</TableHead>
+                        <TableHead>Frecuencia</TableHead>
+                        <TableHead>Inicio</TableHead>
+                        <TableHead>Fin</TableHead>
+                        <TableHead>Fecha Pago</TableHead>
+                        <TableHead>Estado</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {periods.map((p: any) => (
+                        <TableRow key={p.id}>
+                          <TableCell className="font-medium">{p.name}</TableCell>
+                          <TableCell>
+                            <Badge variant="outline">
+                              {p.frequency === "mensual" ? "Mensual" : p.frequency === "quincenal" ? "Quincenal" : "Semanal"}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>{format(new Date(p.start_date), "d MMM yyyy", { locale: es })}</TableCell>
+                          <TableCell>{format(new Date(p.end_date), "d MMM yyyy", { locale: es })}</TableCell>
+                          <TableCell>{p.payment_date ? format(new Date(p.payment_date), "d MMM yyyy", { locale: es }) : "—"}</TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className={periodStatusColor[p.status] || ""}>
+                              {p.status === "abierto" ? "Abierto" : "Cerrado"}
+                            </Badge>
                           </TableCell>
                         </TableRow>
                       ))}
@@ -380,6 +451,7 @@ export default function Nomina() {
       <PayrollBulkUpload open={showBulkUpload} onOpenChange={setShowBulkUpload} />
       <CertificateTemplateForm open={showCertTemplateForm} onOpenChange={setShowCertTemplateForm} />
       <CertificateGenerator open={showCertGenerator} onOpenChange={setShowCertGenerator} />
+      <PeriodForm open={showPeriodForm} onOpenChange={setShowPeriodForm} />
       <PayslipDialog open={!!selectedPayrollId} onOpenChange={(v) => { if (!v) setSelectedPayrollId(null); }} payrollId={selectedPayrollId} />
     </MainLayout>
   );
