@@ -16,16 +16,11 @@ interface PayrollFormProps {
   onOpenChange: (open: boolean) => void;
 }
 
-const currentYear = new Date().getFullYear();
-const currentMonth = new Date().getMonth() + 1;
-const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
-
 export function PayrollForm({ open, onOpenChange }: PayrollFormProps) {
   const queryClient = useQueryClient();
   const { profile } = useAuth();
   const [employeeId, setEmployeeId] = useState("");
-  const [year, setYear] = useState(currentYear.toString());
-  const [month, setMonth] = useState(currentMonth.toString());
+  const [periodId, setPeriodId] = useState("");
   const [baseSalary, setBaseSalary] = useState("");
   const [transportAllowance, setTransportAllowance] = useState("0");
   const [overtime, setOvertime] = useState("0");
@@ -52,7 +47,20 @@ export function PayrollForm({ open, onOpenChange }: PayrollFormProps) {
     enabled: open,
   });
 
-  // Auto-fill salary from contract
+  const { data: periods } = useQuery({
+    queryKey: ["payroll-periods"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("payroll_periods")
+        .select("*")
+        .eq("status", "abierto")
+        .order("start_date", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+    enabled: open,
+  });
+
   const { data: contract } = useQuery({
     queryKey: ["employee-contract", employeeId],
     queryFn: async () => {
@@ -72,6 +80,12 @@ export function PayrollForm({ open, onOpenChange }: PayrollFormProps) {
     setBaseSalary(contract.base_salary?.toString() || "0");
   }
 
+  // Auto-fill payment_date from selected period
+  const selectedPeriod = periods?.find((p: any) => p.id === periodId);
+  if (selectedPeriod?.payment_date && !paymentDate && periodId) {
+    setPaymentDate(selectedPeriod.payment_date);
+  }
+
   const earnings = [baseSalary, transportAllowance, overtime, bonuses, commissions, otherEarnings].reduce((a, b) => a + (parseFloat(b) || 0), 0);
   const deductions = [healthDeduction, pensionDeduction, taxDeduction, otherDeductions].reduce((a, b) => a + (parseFloat(b) || 0), 0);
   const netPay = earnings - deductions;
@@ -84,8 +98,7 @@ export function PayrollForm({ open, onOpenChange }: PayrollFormProps) {
       const { error } = await supabase.from("payroll_records").insert({
         tenant_id: profile?.tenant_id!,
         employee_id: employeeId,
-        period_year: parseInt(year),
-        period_month: parseInt(month),
+        period_id: periodId,
         base_salary: parseFloat(baseSalary) || 0,
         transport_allowance: parseFloat(transportAllowance) || 0,
         overtime: parseFloat(overtime) || 0,
@@ -129,18 +142,14 @@ export function PayrollForm({ open, onOpenChange }: PayrollFormProps) {
             </Select>
           </div>
 
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>Año *</Label>
-              <Input type="number" value={year} onChange={e => setYear(e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label>Mes *</Label>
-              <Select value={month} onValueChange={setMonth}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+              <Label>Período de Pago *</Label>
+              <Select value={periodId} onValueChange={(v) => { setPeriodId(v); setPaymentDate(""); }}>
+                <SelectTrigger><SelectValue placeholder="Seleccionar período" /></SelectTrigger>
                 <SelectContent>
-                  {monthNames.map((m, i) => (
-                    <SelectItem key={i} value={(i + 1).toString()}>{m}</SelectItem>
+                  {periods?.map((p: any) => (
+                    <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -217,7 +226,7 @@ export function PayrollForm({ open, onOpenChange }: PayrollFormProps) {
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button onClick={() => mutation.mutate()} disabled={!employeeId || !baseSalary || mutation.isPending}>
+          <Button onClick={() => mutation.mutate()} disabled={!employeeId || !periodId || !baseSalary || mutation.isPending}>
             {mutation.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
             Guardar
           </Button>

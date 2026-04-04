@@ -12,15 +12,13 @@ interface Props {
   payrollId: string | null;
 }
 
-const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
-
 export function PayslipDialog({ open, onOpenChange, payrollId }: Props) {
   const { data, isLoading } = useQuery({
     queryKey: ["payslip", payrollId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("payroll_records")
-        .select("*, employees!payroll_records_employee_id_fkey(first_name, last_name, document_number, document_type, position, department)")
+        .select("*, employees!payroll_records_employee_id_fkey(first_name, last_name, document_number, document_type, position, department), payroll_periods!payroll_records_period_id_fkey(name, start_date, end_date, frequency)")
         .eq("id", payrollId!)
         .single();
       if (error) throw error;
@@ -41,6 +39,7 @@ export function PayslipDialog({ open, onOpenChange, payrollId }: Props) {
   }
 
   const emp = data.employees as any;
+  const period = data.payroll_periods as any;
   const earnings = [
     { label: "Salario Base", value: data.base_salary },
     { label: "Auxilio de Transporte", value: data.transport_allowance },
@@ -72,15 +71,13 @@ export function PayslipDialog({ open, onOpenChange, payrollId }: Props) {
 
         <Card>
           <CardContent className="pt-6 space-y-4">
-            {/* Header */}
             <div className="text-center border-b pb-4">
               <h2 className="text-lg font-bold">COMPROBANTE DE NÓMINA</h2>
               <p className="text-sm text-muted-foreground">
-                Período: {monthNames[data.period_month - 1]} {data.period_year}
+                Período: {period?.name || "—"}
               </p>
             </div>
 
-            {/* Employee Info */}
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
                 <p className="text-muted-foreground">Empleado</p>
@@ -102,7 +99,6 @@ export function PayslipDialog({ open, onOpenChange, payrollId }: Props) {
 
             <Separator />
 
-            {/* Earnings */}
             <div>
               <p className="text-sm font-bold mb-2">DEVENGADOS</p>
               {earnings.map((e, i) => (
@@ -119,7 +115,6 @@ export function PayslipDialog({ open, onOpenChange, payrollId }: Props) {
 
             <Separator />
 
-            {/* Deductions */}
             <div>
               <p className="text-sm font-bold mb-2">DEDUCCIONES</p>
               {deductions.map((d, i) => (
@@ -136,7 +131,6 @@ export function PayslipDialog({ open, onOpenChange, payrollId }: Props) {
 
             <Separator />
 
-            {/* Net Pay */}
             <div className="flex justify-between items-center text-lg font-bold bg-primary/5 rounded-lg p-3">
               <span>NETO A PAGAR</span>
               <span className="text-primary">{formatCurrency(data.net_pay)}</span>
