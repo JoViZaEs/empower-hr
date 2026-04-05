@@ -14,6 +14,50 @@ export type Database = {
   }
   public: {
     Tables: {
+      annual_parameters: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          id: string
+          minimum_wage: number
+          tenant_id: string
+          transport_allowance: number
+          updated_at: string | null
+          uvt_value: number
+          year: number
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          minimum_wage?: number
+          tenant_id: string
+          transport_allowance?: number
+          updated_at?: string | null
+          uvt_value?: number
+          year: number
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          minimum_wage?: number
+          tenant_id?: string
+          transport_allowance?: number
+          updated_at?: string | null
+          uvt_value?: number
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "annual_parameters_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audit_log: {
         Row: {
           action: string
@@ -1608,6 +1652,73 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "notifications_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payroll_items: {
+        Row: {
+          concept: string
+          created_at: string | null
+          created_by: string | null
+          employee_id: string
+          id: string
+          notes: string | null
+          payment_date: string | null
+          period_id: string
+          tenant_id: string
+          type: string
+          updated_at: string | null
+          value: number
+        }
+        Insert: {
+          concept: string
+          created_at?: string | null
+          created_by?: string | null
+          employee_id: string
+          id?: string
+          notes?: string | null
+          payment_date?: string | null
+          period_id: string
+          tenant_id: string
+          type: string
+          updated_at?: string | null
+          value?: number
+        }
+        Update: {
+          concept?: string
+          created_at?: string | null
+          created_by?: string | null
+          employee_id?: string
+          id?: string
+          notes?: string | null
+          payment_date?: string | null
+          period_id?: string
+          tenant_id?: string
+          type?: string
+          updated_at?: string | null
+          value?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payroll_items_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payroll_items_period_id_fkey"
+            columns: ["period_id"]
+            isOneToOne: false
+            referencedRelation: "payroll_periods"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payroll_items_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
