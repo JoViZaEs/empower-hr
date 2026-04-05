@@ -8,6 +8,7 @@ import { EmailTemplatesSettings } from "@/components/settings/EmailTemplatesSett
 import NotificationPreferencesSettings from "@/components/settings/NotificationPreferencesSettings";
 import { MasterDataSettings } from "@/components/settings/MasterDataSettings";
 import { SignatureSettings } from "@/components/settings/SignatureSettings";
+import { AnnualParametersSettings } from "@/components/settings/AnnualParametersSettings";
 import {
   Building2,
   Users,
@@ -17,6 +18,7 @@ import {
   BellRing,
   Database,
   PenTool,
+  DollarSign,
 } from "lucide-react";
 
 export default function Configuracion() {
@@ -32,7 +34,7 @@ export default function Configuracion() {
         </div>
 
         <Tabs defaultValue="empresa" className="space-y-6">
-          <TabsList className="grid w-full max-w-4xl grid-cols-8">
+          <TabsList className="grid w-full max-w-5xl grid-cols-9">
             <TabsTrigger value="empresa" className="flex items-center gap-2">
               <Building2 className="h-4 w-4" />
               <span className="hidden sm:inline">Empresa</span>
@@ -64,6 +66,10 @@ export default function Configuracion() {
             <TabsTrigger value="seguridad" className="flex items-center gap-2">
               <Shield className="h-4 w-4" />
               <span className="hidden sm:inline">Seguridad</span>
+            </TabsTrigger>
+            <TabsTrigger value="parametros" className="flex items-center gap-2">
+              <DollarSign className="h-4 w-4" />
+              <span className="hidden sm:inline">Parámetros</span>
             </TabsTrigger>
           </TabsList>
 
@@ -97,6 +103,10 @@ export default function Configuracion() {
 
           <TabsContent value="seguridad">
             <SecuritySettings />
+          </TabsContent>
+
+          <TabsContent value="parametros">
+            <AnnualParametersSettings />
           </TabsContent>
         </Tabs>
       </div>

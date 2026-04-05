@@ -20,18 +20,13 @@ import {
   Upload, Download, ScrollText, Calendar,
 } from "lucide-react";
 import { ContractForm } from "@/components/nomina/ContractForm";
-import { PayrollForm } from "@/components/nomina/PayrollForm";
-import { PayrollBulkUpload } from "@/components/nomina/PayrollBulkUpload";
-import { PayslipDialog } from "@/components/nomina/PayslipDialog";
+import { PayrollItemForm } from "@/components/nomina/PayrollItemForm";
+import { PayrollItemsBulkUpload } from "@/components/nomina/PayrollItemsBulkUpload";
+import { PayslipItemsDialog } from "@/components/nomina/PayslipItemsDialog";
 import { CertificateTemplateForm } from "@/components/nomina/CertificateTemplateForm";
 import { CertificateGenerator } from "@/components/nomina/CertificateGenerator";
+import { BulkCertificateGenerator } from "@/components/nomina/BulkCertificateGenerator";
 import { PeriodForm } from "@/components/nomina/PeriodForm";
-
-const statusColor: Record<string, string> = {
-  borrador: "bg-muted text-muted-foreground",
-  procesado: "bg-success/10 text-success border-success/20",
-  pagado: "bg-primary/10 text-primary border-primary/20",
-};
 
 const periodStatusColor: Record<string, string> = {
   abierto: "bg-success/10 text-success border-success/20",
@@ -47,8 +42,9 @@ export default function Nomina() {
   const [showBulkUpload, setShowBulkUpload] = useState(false);
   const [showCertTemplateForm, setShowCertTemplateForm] = useState(false);
   const [showCertGenerator, setShowCertGenerator] = useState(false);
+  const [showBulkCertGenerator, setShowBulkCertGenerator] = useState(false);
   const [showPeriodForm, setShowPeriodForm] = useState(false);
-  const [selectedPayrollId, setSelectedPayrollId] = useState<string | null>(null);
+  const [selectedPayslip, setSelectedPayslip] = useState<{ employeeId: string; periodId: string } | null>(null);
 
   const { data: periods } = useQuery({
     queryKey: ["payroll-periods"],
@@ -62,15 +58,38 @@ export default function Nomina() {
     },
   });
 
-  const { data: payrollRecords, isLoading } = useQuery({
-    queryKey: ["payroll-records"],
+  // Query payroll_items grouped by employee+period
+  const { data: payrollSummary, isLoading } = useQuery({
+    queryKey: ["payroll-items-summary"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("payroll_records")
-        .select("*, employees!payroll_records_employee_id_fkey(first_name, last_name, position, department), payroll_periods!payroll_records_period_id_fkey(name)")
+        .from("payroll_items" as any)
+        .select("*, employees!payroll_items_employee_id_fkey(first_name, last_name, position, department), payroll_periods!payroll_items_period_id_fkey(name)")
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return data;
+
+      // Group by employee_id + period_id
+      const grouped = new Map<string, any>();
+      (data as any[]).forEach((item: any) => {
+        const key = `${item.employee_id}__${item.period_id}`;
+        if (!grouped.has(key)) {
+          grouped.set(key, {
+            employee_id: item.employee_id,
+            period_id: item.period_id,
+            employee: item.employees,
+            period: item.payroll_periods,
+            payment_date: item.payment_date,
+            totalDev: 0,
+            totalDed: 0,
+          });
+        }
+        const g = grouped.get(key)!;
+        if (item.type === "DEV") g.totalDev += item.value || 0;
+        else g.totalDed += item.value || 0;
+        if (item.payment_date) g.payment_date = item.payment_date;
+      });
+
+      return Array.from(grouped.values());
     },
   });
 
@@ -98,17 +117,16 @@ export default function Nomina() {
     },
   });
 
-  const filteredPayroll = payrollRecords?.filter((r: any) => {
+  const filteredPayroll = payrollSummary?.filter((r: any) => {
     const matchesSearch = !searchTerm ||
-      `${r.employees?.first_name} ${r.employees?.last_name}`.toLowerCase().includes(searchTerm.toLowerCase());
+      `${r.employee?.first_name} ${r.employee?.last_name}`.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesPeriod = periodFilter === "all" || r.period_id === periodFilter;
     return matchesSearch && matchesPeriod;
   });
 
   const stats = {
     totalContracts: contracts?.filter((c: any) => c.active).length || 0,
-    totalPayrolls: payrollRecords?.length || 0,
-    totalPaid: payrollRecords?.filter((r: any) => r.status === "pagado").length || 0,
+    totalPayrolls: payrollSummary?.length || 0,
     totalTemplates: certTemplates?.length || 0,
   };
 
@@ -152,9 +170,13 @@ export default function Nomina() {
             )}
             {activeTab === "certificaciones" && (
               <>
+                <Button variant="outline" className="gap-2" onClick={() => setShowBulkCertGenerator(true)}>
+                  <Users className="h-4 w-4" />
+                  Masiva
+                </Button>
                 <Button variant="outline" className="gap-2" onClick={() => setShowCertGenerator(true)}>
                   <Download className="h-4 w-4" />
-                  Generar Certificado
+                  Individual
                 </Button>
                 <Button className="gap-2" onClick={() => setShowCertTemplateForm(true)}>
                   <Plus className="h-4 w-4" />
@@ -187,14 +209,14 @@ export default function Nomina() {
 
           {/* NÓMINA TAB */}
           <TabsContent value="nomina" className="space-y-6 mt-4">
-            <div className="grid gap-4 md:grid-cols-4">
+            <div className="grid gap-4 md:grid-cols-3">
               <Card>
                 <CardContent className="pt-6">
                   <div className="flex items-center gap-4">
                     <div className="rounded-lg bg-primary/10 p-3"><Banknote className="h-6 w-6 text-primary" /></div>
                     <div>
                       <p className="text-2xl font-bold">{stats.totalPayrolls}</p>
-                      <p className="text-sm text-muted-foreground">Registros</p>
+                      <p className="text-sm text-muted-foreground">Liquidaciones</p>
                     </div>
                   </div>
                 </CardContent>
@@ -202,18 +224,7 @@ export default function Nomina() {
               <Card>
                 <CardContent className="pt-6">
                   <div className="flex items-center gap-4">
-                    <div className="rounded-lg bg-success/10 p-3"><FileText className="h-6 w-6 text-success" /></div>
-                    <div>
-                      <p className="text-2xl font-bold">{stats.totalPaid}</p>
-                      <p className="text-sm text-muted-foreground">Pagados</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="flex items-center gap-4">
-                    <div className="rounded-lg bg-warning/10 p-3"><Users className="h-6 w-6 text-warning" /></div>
+                    <div className="rounded-lg bg-warning/10 p-3"><FileText className="h-6 w-6 text-warning" /></div>
                     <div>
                       <p className="text-2xl font-bold">{stats.totalContracts}</p>
                       <p className="text-sm text-muted-foreground">Contratos Activos</p>
@@ -274,27 +285,21 @@ export default function Nomina() {
                         <TableHead className="text-right">Devengado</TableHead>
                         <TableHead className="text-right">Deducciones</TableHead>
                         <TableHead className="text-right">Neto</TableHead>
-                        <TableHead>Estado</TableHead>
                         <TableHead className="text-right">Acciones</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {filteredPayroll.map((r: any) => (
-                        <TableRow key={r.id}>
+                        <TableRow key={`${r.employee_id}__${r.period_id}`}>
                           <TableCell className="font-medium">
-                            {r.employees?.first_name} {r.employees?.last_name}
+                            {r.employee?.first_name} {r.employee?.last_name}
                           </TableCell>
-                          <TableCell>{(r.payroll_periods as any)?.name || "—"}</TableCell>
-                          <TableCell className="text-right">{formatCurrency(r.total_earnings)}</TableCell>
-                          <TableCell className="text-right text-destructive">{formatCurrency(r.total_deductions)}</TableCell>
-                          <TableCell className="text-right font-bold">{formatCurrency(r.net_pay)}</TableCell>
-                          <TableCell>
-                            <Badge variant="outline" className={statusColor[r.status] || ""}>
-                              {r.status === "borrador" ? "Borrador" : r.status === "procesado" ? "Procesado" : "Pagado"}
-                            </Badge>
-                          </TableCell>
+                          <TableCell>{r.period?.name || "—"}</TableCell>
+                          <TableCell className="text-right text-success">{formatCurrency(r.totalDev)}</TableCell>
+                          <TableCell className="text-right text-destructive">{formatCurrency(r.totalDed)}</TableCell>
+                          <TableCell className="text-right font-bold">{formatCurrency(r.totalDev - r.totalDed)}</TableCell>
                           <TableCell className="text-right">
-                            <Button variant="ghost" size="sm" onClick={() => setSelectedPayrollId(r.id)}>
+                            <Button variant="ghost" size="sm" onClick={() => setSelectedPayslip({ employeeId: r.employee_id, periodId: r.period_id })}>
                               Desprendible
                             </Button>
                           </TableCell>
@@ -447,12 +452,18 @@ export default function Nomina() {
       </div>
 
       <ContractForm open={showContractForm} onOpenChange={setShowContractForm} />
-      <PayrollForm open={showPayrollForm} onOpenChange={setShowPayrollForm} />
-      <PayrollBulkUpload open={showBulkUpload} onOpenChange={setShowBulkUpload} />
+      <PayrollItemForm open={showPayrollForm} onOpenChange={setShowPayrollForm} />
+      <PayrollItemsBulkUpload open={showBulkUpload} onOpenChange={setShowBulkUpload} />
       <CertificateTemplateForm open={showCertTemplateForm} onOpenChange={setShowCertTemplateForm} />
       <CertificateGenerator open={showCertGenerator} onOpenChange={setShowCertGenerator} />
+      <BulkCertificateGenerator open={showBulkCertGenerator} onOpenChange={setShowBulkCertGenerator} />
       <PeriodForm open={showPeriodForm} onOpenChange={setShowPeriodForm} />
-      <PayslipDialog open={!!selectedPayrollId} onOpenChange={(v) => { if (!v) setSelectedPayrollId(null); }} payrollId={selectedPayrollId} />
+      <PayslipItemsDialog
+        open={!!selectedPayslip}
+        onOpenChange={(v) => { if (!v) setSelectedPayslip(null); }}
+        employeeId={selectedPayslip?.employeeId || null}
+        periodId={selectedPayslip?.periodId || null}
+      />
     </MainLayout>
   );
 }
