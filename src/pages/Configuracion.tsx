@@ -67,6 +67,10 @@ export default function Configuracion() {
               <Shield className="h-4 w-4" />
               <span className="hidden sm:inline">Seguridad</span>
             </TabsTrigger>
+            <TabsTrigger value="parametros" className="flex items-center gap-2">
+              <DollarSign className="h-4 w-4" />
+              <span className="hidden sm:inline">Parámetros</span>
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="empresa">
@@ -99,6 +103,10 @@ export default function Configuracion() {
 
           <TabsContent value="seguridad">
             <SecuritySettings />
+          </TabsContent>
+
+          <TabsContent value="parametros">
+            <AnnualParametersSettings />
           </TabsContent>
         </Tabs>
       </div>
