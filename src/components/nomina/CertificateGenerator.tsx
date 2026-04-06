@@ -107,9 +107,12 @@ export function CertificateGenerator({ open, onOpenChange }: Props) {
     const logoHtml = tenant?.logo_url
       ? `<img src="${tenant.logo_url}" style="height:60px;margin:0 auto 10px;display:block;" />`
       : "";
-    printWindow.document.write(`<html><head><title>Certificación</title></head><body style="padding:40px;font-family:serif;">
+    printWindow.document.write(`<html><head><title>Certificación</title><style>
+      body { padding:40px; font-family:serif; font-size:14px; line-height:1.8; }
+      p { margin: 0.3em 0; }
+    </style></head><body>
       ${logoHtml}
-      <pre style="white-space:pre-wrap;font-family:serif;font-size:14px;line-height:1.8;">${content}</pre>
+      ${content}
     </body></html>`);
     printWindow.document.close();
     printWindow.print();
@@ -178,7 +181,7 @@ export function CertificateGenerator({ open, onOpenChange }: Props) {
           {content && (
             <Card>
               <CardContent className="pt-6">
-                <pre className="whitespace-pre-wrap font-serif text-sm leading-relaxed">{content}</pre>
+                <div className="prose prose-sm max-w-none font-serif" dangerouslySetInnerHTML={{ __html: content }} />
               </CardContent>
             </Card>
           )}
