@@ -5,31 +5,40 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { Badge } from "@/components/ui/badge";
 
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-const defaultTemplate = `{{dirigida_a}}
+const defaultTemplate = `<p style="text-align: center"><strong>CERTIFICACIÓN LABORAL</strong></p>
+<p><br></p>
+<p>{{dirigida_a}}</p>
+<p><br></p>
+<p>El suscrito Representante Legal de <strong>{{empresa}}</strong>, certifica que:</p>
+<p><br></p>
+<p><strong>{{nombre_empleado}}</strong>, identificado(a) con {{tipo_documento}} No. {{numero_documento}}, labora en esta empresa desde el {{fecha_inicio}} con contrato a término {{tipo_contrato}}, desempeñando el cargo de <strong>{{cargo}}</strong> en el departamento de {{departamento}}.</p>
+<p><br></p>
+<p>Devenga un salario mensual de <strong>{{salario_base}}</strong> ({{salario_letras}}).</p>
+<p><br></p>
+<p>La presente certificación se expide a solicitud del interesado, a los {{dia}} días del mes de {{mes}} de {{año}}.</p>
+<p><br></p>
+<p>Atentamente,</p>
+<p><br></p>
+<p>_____________________________</p>
+<p>Representante Legal</p>
+<p>{{empresa}}</p>`;
 
-El suscrito Representante Legal de {{empresa}}, certifica que:
-
-{{nombre_empleado}}, identificado(a) con {{tipo_documento}} No. {{numero_documento}}, labora en esta empresa desde el {{fecha_inicio}} con contrato a término {{tipo_contrato}}, desempeñando el cargo de {{cargo}} en el departamento de {{departamento}}.
-
-Devenga un salario mensual de {{salario_base}} ({{salario_letras}}).
-
-La presente certificación se expide a solicitud del interesado, a los {{dia}} días del mes de {{mes}} de {{año}}.
-
-Atentamente,
-
-_____________________________
-Representante Legal
-{{empresa}}`;
+const variables = [
+  "dirigida_a", "nombre_empleado", "tipo_documento", "numero_documento",
+  "cargo", "departamento", "fecha_inicio", "tipo_contrato",
+  "salario_base", "salario_letras", "empresa", "dia", "mes", "año",
+];
 
 export function CertificateTemplateForm({ open, onOpenChange }: Props) {
   const queryClient = useQueryClient();
@@ -58,21 +67,31 @@ export function CertificateTemplateForm({ open, onOpenChange }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Nueva Plantilla de Certificación</DialogTitle>
           <DialogDescription>
-            Variables disponibles: {"{{dirigida_a}}"}, {"{{nombre_empleado}}"}, {"{{tipo_documento}}"}, {"{{numero_documento}}"}, {"{{cargo}}"}, {"{{departamento}}"}, {"{{fecha_inicio}}"}, {"{{tipo_contrato}}"}, {"{{salario_base}}"}, {"{{empresa}}"}, {"{{dia}}"}, {"{{mes}}"}, {"{{año}}"}
+            Usa las variables entre llaves dobles para insertar datos dinámicos del empleado y la empresa.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-2">
+          <div className="space-y-2">
+            <Label>Variables disponibles</Label>
+            <div className="flex flex-wrap gap-1.5">
+              {variables.map(v => (
+                <Badge key={v} variant="secondary" className="text-xs font-mono cursor-default">
+                  {`{{${v}}}`}
+                </Badge>
+              ))}
+            </div>
+          </div>
           <div className="space-y-2">
             <Label>Nombre de la Plantilla</Label>
             <Input value={name} onChange={e => setName(e.target.value)} />
           </div>
           <div className="space-y-2">
             <Label>Contenido de la Certificación</Label>
-            <Textarea value={content} onChange={e => setContent(e.target.value)} rows={16} className="font-mono text-sm" />
+            <RichTextEditor content={content} onChange={setContent} />
           </div>
         </div>
         <DialogFooter>

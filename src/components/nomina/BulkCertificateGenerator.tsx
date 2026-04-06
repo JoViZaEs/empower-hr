@@ -129,10 +129,12 @@ export function BulkCertificateGenerator({ open, onOpenChange }: Props) {
     const pages = generatedContent.map(c => `
       <div style="page-break-after:always;padding:40px;font-family:serif;">
         ${logoHtml}
-        <pre style="white-space:pre-wrap;font-family:serif;font-size:14px;line-height:1.8;">${c.content}</pre>
+        ${c.content}
       </div>
     `).join("");
-    printWindow.document.write(`<html><head><title>Certificaciones</title></head><body>${pages}</body></html>`);
+    printWindow.document.write(`<html><head><title>Certificaciones</title><style>
+      body { margin:0; } p { margin: 0.3em 0; } div { font-size:14px; line-height:1.8; }
+    </style></head><body>${pages}</body></html>`);
     printWindow.document.close();
     printWindow.print();
   };
