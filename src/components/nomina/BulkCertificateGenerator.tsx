@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -19,6 +20,7 @@ const monthNames = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "juli
 
 export function BulkCertificateGenerator({ open, onOpenChange }: Props) {
   const [templateId, setTemplateId] = useState("");
+  const [dirigidaA, setDirigidaA] = useState("");
   const [selectedEmployees, setSelectedEmployees] = useState<string[]>([]);
   const [generatedContent, setGeneratedContent] = useState<{ name: string; content: string }[]>([]);
 
@@ -27,7 +29,7 @@ export function BulkCertificateGenerator({ open, onOpenChange }: Props) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("employees")
-        .select("id, first_name, last_name, document_type, document_number, position, department, hire_date")
+        .select("id, first_name, last_name, document_type, document_number, hire_date")
         .eq("active", true)
         .order("first_name");
       if (error) throw error;
@@ -49,7 +51,10 @@ export function BulkCertificateGenerator({ open, onOpenChange }: Props) {
   const { data: contracts } = useQuery({
     queryKey: ["all-active-contracts"],
     queryFn: async () => {
-      const { data } = await supabase.from("employee_contracts").select("employee_id, base_salary").eq("active", true);
+      const { data } = await supabase
+        .from("employee_contracts")
+        .select("employee_id, base_salary, contract_type, start_date, position, department")
+        .eq("active", true);
       return data;
     },
     enabled: open,
@@ -67,21 +72,17 @@ export function BulkCertificateGenerator({ open, onOpenChange }: Props) {
   });
 
   const toggleEmployee = (id: string) => {
-    setSelectedEmployees(prev =>
-      prev.includes(id) ? prev.filter(e => e !== id) : [...prev, id]
-    );
+    setSelectedEmployees(prev => prev.includes(id) ? prev.filter(e => e !== id) : [...prev, id]);
   };
 
   const selectAll = () => {
-    if (selectedEmployees.length === employees?.length) {
-      setSelectedEmployees([]);
-    } else {
-      setSelectedEmployees(employees?.map(e => e.id) || []);
-    }
+    setSelectedEmployees(
+      selectedEmployees.length === employees?.length ? [] : employees?.map(e => e.id) || []
+    );
   };
 
   const template = templates?.find(t => t.id === templateId);
-  const contractMap = new Map(contracts?.map(c => [c.employee_id, c.base_salary]) || []);
+  const contractMap = new Map(contracts?.map(c => [c.employee_id, c]) || []);
 
   const formatCurrency = (val: number) =>
     new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 }).format(val);
@@ -93,18 +94,21 @@ export function BulkCertificateGenerator({ open, onOpenChange }: Props) {
     const results = selectedEmployees.map(empId => {
       const emp = employees?.find(e => e.id === empId);
       if (!emp) return null;
-      const salary = contractMap.get(empId) || 0;
+      const contract = contractMap.get(empId);
+      const salary = contract?.base_salary || 0;
 
       const content = template.content_template
         .replace(/\{\{nombre_empleado\}\}/g, `${emp.first_name} ${emp.last_name}`)
         .replace(/\{\{tipo_documento\}\}/g, emp.document_type || "CC")
         .replace(/\{\{numero_documento\}\}/g, emp.document_number || "")
-        .replace(/\{\{cargo\}\}/g, emp.position || "N/A")
-        .replace(/\{\{departamento\}\}/g, emp.department || "N/A")
-        .replace(/\{\{fecha_inicio\}\}/g, emp.hire_date || "N/A")
+        .replace(/\{\{cargo\}\}/g, contract?.position || "N/A")
+        .replace(/\{\{departamento\}\}/g, contract?.department || "N/A")
+        .replace(/\{\{fecha_inicio\}\}/g, contract?.start_date || emp.hire_date || "N/A")
+        .replace(/\{\{tipo_contrato\}\}/g, contract?.contract_type || "N/A")
         .replace(/\{\{salario_base\}\}/g, formatCurrency(salary))
         .replace(/\{\{salario_letras\}\}/g, "")
         .replace(/\{\{empresa\}\}/g, tenant?.name || "La Empresa")
+        .replace(/\{\{dirigida_a\}\}/g, dirigidaA || "A QUIEN INTERESE")
         .replace(/\{\{dia\}\}/g, now.getDate().toString())
         .replace(/\{\{mes\}\}/g, monthNames[now.getMonth()])
         .replace(/\{\{año\}\}/g, now.getFullYear().toString());
@@ -119,18 +123,15 @@ export function BulkCertificateGenerator({ open, onOpenChange }: Props) {
   const printAll = () => {
     const printWindow = window.open("", "_blank");
     if (!printWindow) return;
-
     const logoHtml = tenant?.logo_url
       ? `<img src="${tenant.logo_url}" style="height:60px;margin:0 auto 10px;display:block;" />`
       : "";
-
     const pages = generatedContent.map(c => `
       <div style="page-break-after:always;padding:40px;font-family:serif;">
         ${logoHtml}
         <pre style="white-space:pre-wrap;font-family:serif;font-size:14px;line-height:1.8;">${c.content}</pre>
       </div>
     `).join("");
-
     printWindow.document.write(`<html><head><title>Certificaciones</title></head><body>${pages}</body></html>`);
     printWindow.document.close();
     printWindow.print();
@@ -144,19 +145,29 @@ export function BulkCertificateGenerator({ open, onOpenChange }: Props) {
             <Users className="h-5 w-5" />
             Generación Masiva de Certificaciones
           </DialogTitle>
-          <DialogDescription>Selecciona la plantilla y los empleados para generar certificaciones en lote</DialogDescription>
+          <DialogDescription>Los datos se toman del contrato activo de cada empleado</DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-2">
-          <div className="space-y-2">
-            <Label>Plantilla</Label>
-            <Select value={templateId} onValueChange={setTemplateId}>
-              <SelectTrigger><SelectValue placeholder="Seleccionar plantilla" /></SelectTrigger>
-              <SelectContent>
-                {templates?.map(t => (
-                  <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Plantilla</Label>
+              <Select value={templateId} onValueChange={setTemplateId}>
+                <SelectTrigger><SelectValue placeholder="Seleccionar plantilla" /></SelectTrigger>
+                <SelectContent>
+                  {templates?.map(t => (
+                    <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Dirigida a (opcional)</Label>
+              <Input
+                value={dirigidaA}
+                onChange={e => setDirigidaA(e.target.value)}
+                placeholder="A QUIEN INTERESE"
+              />
+            </div>
           </div>
 
           <div className="space-y-2">
@@ -167,16 +178,21 @@ export function BulkCertificateGenerator({ open, onOpenChange }: Props) {
               </Button>
             </div>
             <ScrollArea className="h-[200px] border rounded-lg p-3">
-              {employees?.map(e => (
-                <div key={e.id} className="flex items-center gap-3 py-1.5">
-                  <Checkbox
-                    checked={selectedEmployees.includes(e.id)}
-                    onCheckedChange={() => toggleEmployee(e.id)}
-                  />
-                  <span className="text-sm">{e.first_name} {e.last_name}</span>
-                  <span className="text-xs text-muted-foreground">{e.position || ""}</span>
-                </div>
-              ))}
+              {employees?.map(e => {
+                const hasContract = contractMap.has(e.id);
+                return (
+                  <div key={e.id} className="flex items-center gap-3 py-1.5">
+                    <Checkbox
+                      checked={selectedEmployees.includes(e.id)}
+                      onCheckedChange={() => toggleEmployee(e.id)}
+                    />
+                    <span className="text-sm">{e.first_name} {e.last_name}</span>
+                    {!hasContract && (
+                      <span className="text-xs text-destructive">Sin contrato</span>
+                    )}
+                  </div>
+                );
+              })}
             </ScrollArea>
           </div>
 
@@ -187,9 +203,7 @@ export function BulkCertificateGenerator({ open, onOpenChange }: Props) {
                 {generatedContent.length} certificaciones listas
               </p>
               <div className="text-xs space-y-1">
-                {generatedContent.map((c, i) => (
-                  <p key={i}>✓ {c.name}</p>
-                ))}
+                {generatedContent.map((c, i) => <p key={i}>✓ {c.name}</p>)}
               </div>
             </div>
           )}

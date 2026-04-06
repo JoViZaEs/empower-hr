@@ -15,9 +15,11 @@ interface Props {
   onOpenChange: (open: boolean) => void;
 }
 
-const defaultTemplate = `El suscrito Representante Legal de {{empresa}}, certifica que:
+const defaultTemplate = `{{dirigida_a}}
 
-{{nombre_empleado}}, identificado(a) con {{tipo_documento}} No. {{numero_documento}}, labora en esta empresa desde el {{fecha_inicio}} desempeñando el cargo de {{cargo}} en el departamento de {{departamento}}.
+El suscrito Representante Legal de {{empresa}}, certifica que:
+
+{{nombre_empleado}}, identificado(a) con {{tipo_documento}} No. {{numero_documento}}, labora en esta empresa desde el {{fecha_inicio}} con contrato a término {{tipo_contrato}}, desempeñando el cargo de {{cargo}} en el departamento de {{departamento}}.
 
 Devenga un salario mensual de {{salario_base}} ({{salario_letras}}).
 
@@ -60,7 +62,7 @@ export function CertificateTemplateForm({ open, onOpenChange }: Props) {
         <DialogHeader>
           <DialogTitle>Nueva Plantilla de Certificación</DialogTitle>
           <DialogDescription>
-            Variables disponibles: {"{{nombre_empleado}}"}, {"{{tipo_documento}}"}, {"{{numero_documento}}"}, {"{{cargo}}"}, {"{{departamento}}"}, {"{{fecha_inicio}}"}, {"{{salario_base}}"}, {"{{empresa}}"}, {"{{dia}}"}, {"{{mes}}"}, {"{{año}}"}
+            Variables disponibles: {"{{dirigida_a}}"}, {"{{nombre_empleado}}"}, {"{{tipo_documento}}"}, {"{{numero_documento}}"}, {"{{cargo}}"}, {"{{departamento}}"}, {"{{fecha_inicio}}"}, {"{{tipo_contrato}}"}, {"{{salario_base}}"}, {"{{empresa}}"}, {"{{dia}}"}, {"{{mes}}"}, {"{{año}}"}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-2">
