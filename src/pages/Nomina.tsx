@@ -20,6 +20,7 @@ import {
   Upload, Download, ScrollText, Calendar,
 } from "lucide-react";
 import { ContractForm } from "@/components/nomina/ContractForm";
+import { ContractBulkUpload } from "@/components/nomina/ContractBulkUpload";
 import { PayrollItemForm } from "@/components/nomina/PayrollItemForm";
 import { PayrollItemsBulkUpload } from "@/components/nomina/PayrollItemsBulkUpload";
 import { PayslipItemsDialog } from "@/components/nomina/PayslipItemsDialog";
@@ -44,6 +45,7 @@ export default function Nomina() {
   const [showCertGenerator, setShowCertGenerator] = useState(false);
   const [showBulkCertGenerator, setShowBulkCertGenerator] = useState(false);
   const [showPeriodForm, setShowPeriodForm] = useState(false);
+  const [showContractBulkUpload, setShowContractBulkUpload] = useState(false);
   const [selectedPayslip, setSelectedPayslip] = useState<{ employeeId: string; periodId: string } | null>(null);
 
   const { data: periods } = useQuery({
@@ -163,10 +165,16 @@ export default function Nomina() {
               </Button>
             )}
             {activeTab === "contratos" && (
-              <Button className="gap-2" onClick={() => setShowContractForm(true)}>
-                <Plus className="h-4 w-4" />
-                Nuevo Contrato
-              </Button>
+              <>
+                <Button variant="outline" className="gap-2" onClick={() => setShowContractBulkUpload(true)}>
+                  <Upload className="h-4 w-4" />
+                  Carga Masiva
+                </Button>
+                <Button className="gap-2" onClick={() => setShowContractForm(true)}>
+                  <Plus className="h-4 w-4" />
+                  Nuevo Contrato
+                </Button>
+              </>
             )}
             {activeTab === "certificaciones" && (
               <>
@@ -452,6 +460,7 @@ export default function Nomina() {
       </div>
 
       <ContractForm open={showContractForm} onOpenChange={setShowContractForm} />
+      <ContractBulkUpload open={showContractBulkUpload} onOpenChange={setShowContractBulkUpload} />
       <PayrollItemForm open={showPayrollForm} onOpenChange={setShowPayrollForm} />
       <PayrollItemsBulkUpload open={showBulkUpload} onOpenChange={setShowBulkUpload} />
       <CertificateTemplateForm open={showCertTemplateForm} onOpenChange={setShowCertTemplateForm} />
