@@ -9,6 +9,7 @@ import NotificationPreferencesSettings from "@/components/settings/NotificationP
 import { MasterDataSettings } from "@/components/settings/MasterDataSettings";
 import { SignatureSettings } from "@/components/settings/SignatureSettings";
 import { AnnualParametersSettings } from "@/components/settings/AnnualParametersSettings";
+import { PortalAccountsSettings } from "@/components/settings/PortalAccountsSettings";
 import {
   Building2,
   Users,
@@ -19,6 +20,7 @@ import {
   Database,
   PenTool,
   DollarSign,
+  IdCard,
 } from "lucide-react";
 
 export default function Configuracion() {
@@ -34,7 +36,7 @@ export default function Configuracion() {
         </div>
 
         <Tabs defaultValue="empresa" className="space-y-6">
-          <TabsList className="grid w-full max-w-5xl grid-cols-9">
+          <TabsList className="grid w-full max-w-6xl grid-cols-10">
             <TabsTrigger value="empresa" className="flex items-center gap-2">
               <Building2 className="h-4 w-4" />
               <span className="hidden sm:inline">Empresa</span>
@@ -70,6 +72,10 @@ export default function Configuracion() {
             <TabsTrigger value="parametros" className="flex items-center gap-2">
               <DollarSign className="h-4 w-4" />
               <span className="hidden sm:inline">Parámetros</span>
+            </TabsTrigger>
+            <TabsTrigger value="portal" className="flex items-center gap-2">
+              <IdCard className="h-4 w-4" />
+              <span className="hidden sm:inline">Portal Empleado</span>
             </TabsTrigger>
           </TabsList>
 
@@ -107,6 +113,10 @@ export default function Configuracion() {
 
           <TabsContent value="parametros">
             <AnnualParametersSettings />
+          </TabsContent>
+
+          <TabsContent value="portal">
+            <PortalAccountsSettings />
           </TabsContent>
         </Tabs>
       </div>
