@@ -829,6 +829,69 @@ export type Database = {
           },
         ]
       }
+      employee_portal_accounts: {
+        Row: {
+          activated_at: string
+          created_at: string
+          employee_id: string
+          id: string
+          last_login_at: string | null
+          must_change_password: boolean
+          revoked_at: string | null
+          revoked_reason: string | null
+          status: string
+          synthetic_email: string
+          tenant_id: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          activated_at?: string
+          created_at?: string
+          employee_id: string
+          id?: string
+          last_login_at?: string | null
+          must_change_password?: boolean
+          revoked_at?: string | null
+          revoked_reason?: string | null
+          status?: string
+          synthetic_email: string
+          tenant_id: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          activated_at?: string
+          created_at?: string
+          employee_id?: string
+          id?: string
+          last_login_at?: string | null
+          must_change_password?: boolean
+          revoked_at?: string | null
+          revoked_reason?: string | null
+          status?: string
+          synthetic_email?: string
+          tenant_id?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_portal_accounts_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: true
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_portal_accounts_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       employees: {
         Row: {
           active: boolean | null
@@ -2577,6 +2640,7 @@ export type Database = {
         Args: { _evaluation_id: string }
         Returns: number
       }
+      get_current_employee_id: { Args: never; Returns: string }
       get_user_notification_preferences: {
         Args: { _user_id: string }
         Returns: {
@@ -2603,6 +2667,14 @@ export type Database = {
         Returns: boolean
       }
       is_super_admin: { Args: { _user_id: string }; Returns: boolean }
+      resolve_employee_login: {
+        Args: { p_documento: string; p_tenant_slug?: string }
+        Returns: {
+          must_change_password: boolean
+          synthetic_email: string
+          tenant_slug: string
+        }[]
+      }
     }
     Enums: {
       app_role: "super_admin" | "tenant_admin" | "user"
