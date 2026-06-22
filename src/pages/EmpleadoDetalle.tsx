@@ -12,6 +12,7 @@ import { EmpleadoDotacion } from "@/components/empleados/EmpleadoDotacion";
 import { EmpleadoVigilancias } from "@/components/empleados/EmpleadoVigilancias";
 import { EmpleadoEvaluaciones } from "@/components/empleados/EmpleadoEvaluaciones";
 import { EmpleadoComites } from "@/components/empleados/EmpleadoComites";
+import { PortalAccountActions } from "@/components/portal/PortalAccountActions";
 
 export default function EmpleadoDetalle() {
   const { id } = useParams<{ id: string }>();
@@ -96,7 +97,8 @@ export default function EmpleadoDetalle() {
             <TabsTrigger value="comites">Comités</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="general">
+          <TabsContent value="general" className="space-y-4">
+            <PortalAccountActions employeeId={employee.id} documentNumber={employee.document_number} />
             <EmpleadoInfoGeneral employee={employee} />
           </TabsContent>
 

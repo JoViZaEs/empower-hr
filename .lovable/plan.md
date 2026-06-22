@@ -1,63 +1,206 @@
+# Portal del Empleado — `/Funcionarios`
 
-# Migrar el proyecto a tu Supabase propio
+Portal paralelo al sistema administrativo donde cada empleado autentica con **documento + contraseña** y ve/actúa únicamente sobre lo suyo. Incluye **ciclo de vida completo de la cuenta**: alta individual, reset de clave y revocación al retiro.
 
-## Contexto
+---
 
-Hoy el proyecto corre sobre **Lovable Cloud** (un Supabase administrado por Lovable, ref `mxcoufmuydqeelbmqogk`). Lo que vamos a hacer es desconectarlo y conectar **tu propio proyecto Supabase** (cuenta del otro correo). Como confirmaste que los datos actuales son solo de demo, no hay export/import — partimos limpio.
+## 1. Modelo de autenticación
 
-## Paso 1 — Tú: conectar tu Supabase en Lovable
+Supabase Auth requiere email → generamos un **email sintético interno** por empleado:
 
-Esto **lo tienes que hacer tú** porque requiere autenticarte con tu cuenta de Supabase. Yo no tengo permisos para hacerlo.
+```
+{documento}@portal.{tenant_slug}.nexurh
+```
 
-1. En Lovable, arriba a la derecha abre **Integrations** (o el menú **Connectors** del sidebar).
-2. Busca **Supabase** y pulsa **Connect Supabase**.
-3. Inicia sesión con la cuenta del otro correo y autoriza Lovable.
-4. Selecciona la **organización** y **crea un proyecto nuevo** vacío (ej. `nexurh-app`). No lo apuntes a la base central — esa queda como segunda instancia separada.
-5. Confirma. Lovable reescribirá automáticamente:
-   - `.env` (`VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, `VITE_SUPABASE_PROJECT_ID`)
-   - `src/integrations/supabase/client.ts`
-   - `src/integrations/supabase/types.ts`
-   
-> Aviso de Lovable: al conectar tu Supabase se desconecta Lovable Cloud y los datos de demo se pierden. Está bien.
+- Invisible para el usuario: en el login solo escribe **documento + contraseña**.
+- El frontend resuelve documento → email sintético vía RPC pública `resolve_employee_login(documento, tenant_slug?)`.
+- **Contraseña inicial = el propio número de documento**; flag `must_change_password = true` fuerza el cambio en el primer ingreso.
 
-## Paso 2 — Yo: recrear todo el esquema en tu Supabase
+### Nueva tabla `employee_portal_accounts`
+| campo | uso |
+|---|---|
+| `employee_id` | FK a `employees` (unique) |
+| `tenant_id` | multi-tenant |
+| `user_id` | FK a `auth.users` |
+| `synthetic_email` | unique, usado para login |
+| `must_change_password` | bool, fuerza reset en primer login |
+| `status` | `active` / `revoked` |
+| `last_login_at`, `activated_at`, `revoked_at`, `revoked_reason` | telemetría |
 
-Cuando me confirmes que ya conectaste, yo ejecuto en orden:
+Tabla nueva → con `GRANT` + RLS (empleado lee solo su fila; admin del tenant ve todas).
 
-1. **Migraciones de esquema completo**: tablas (`tenants`, `profiles`, `employees`, `roles`, `permissions`, `evaluations`, `nomina*`, `signatures`, `evidences`, etc.), enums, funciones (`has_role`, `has_permission`, `is_super_admin`, `get_user_tenant_id`, `handle_new_user`, etc.), triggers y políticas RLS — exactamente las que ya tienes hoy.
-2. **Storage buckets**: `company-logos` (público), `signatures`, `evidences`, `regulations`, `exam-documents` (privados) con sus políticas.
-3. **Auth config**: email/password habilitado, redirect URLs.
-4. **Re-cargar secrets** en el nuevo proyecto:
-   - `CENTRAL_SUPABASE_URL` y `CENTRAL_SUPABASE_SERVICE_KEY` (los que ya tienes para la central — los pediré de nuevo porque son a nivel proyecto Supabase).
-   - `RESEND_API_KEY` u otros que ya tuvieras.
-5. **Re-desplegar todas las edge functions** (`generate-notifications`, `send-summary-notifications`, etc.) — Lovable lo hace automático al detectar el cambio de proyecto.
-6. **Datos semilla mínimos**: módulos del sistema, permisos estándar, tipos maestros marcados como `is_standard = true` (países/cargos/EPS/ARL/tipos de examen, etc.).
+---
 
-## Paso 3 — Yo: validar que todo funciona
+## 2. Ciclo de vida de la cuenta (gestión por el admin)
 
-1. Crear un usuario de prueba vía signup.
-2. Verificar que `handle_new_user` crea tenant + perfil + rol Administrador.
-3. Probar una mutación con RLS (crear empleado).
-4. Probar una edge function (notificaciones).
-5. Confirmar que los buckets de storage aceptan upload.
+Todas las acciones se hacen desde **Configuración → Portal del Empleado** y desde la **Ficha Técnica de cada empleado** (botones contextuales).
 
-## Paso 4 — Continuar con la integración a la central
+### 2.1 Alta individual con un click — **"Activar portal"**
+- Disponible en la Ficha Técnica de cualquier empleado sin cuenta.
+- Edge function **`portal-account-create`** (service_role):
+  1. Valida que el empleado existe, está activo y pertenece al tenant del admin.
+  2. Crea usuario en `auth.users` con email sintético + password = documento + `email_confirm: true`.
+  3. Inserta en `employee_portal_accounts` con `must_change_password = true`, `status = 'active'`.
+  4. Devuelve confirmación (sin enviar email — el admin entrega las credenciales).
+- UI: botón **"Activar acceso al portal"** → diálogo de confirmación que muestra "Usuario: {documento} · Contraseña inicial: {documento} · El empleado deberá cambiarla al ingresar."
 
-Una vez el proyecto vive en tu Supabase, retomamos el plan anterior:
-- Espejo de tenant + `tenant_plan_cache` + `ref_*` catálogos.
-- Edge functions `central-tenant-provision`, `central-sync-*`, `central-checkout`, `central-webhook`, `enforce-action`.
-- Wizard de signup con país/moneda/zona/plan inicial.
-- Banner de plan + guard de límites.
+### 2.2 Resetear contraseña — **"Resetear clave"**
+- Disponible en cuentas activas.
+- Edge function **`portal-account-reset-password`** (service_role):
+  1. Resetea la contraseña en `auth.users` al número de documento.
+  2. Marca `must_change_password = true`.
+  3. Invalida sesiones activas del empleado (`auth.admin.signOut`).
+- UI: diálogo de confirmación → al ejecutar muestra "Contraseña reseteada al documento. El empleado deberá cambiarla al ingresar."
 
-## Lo que necesito de ti ahora
+### 2.3 Revocar acceso — **"Revocar portal"**
+- Disponible en cuentas activas.
+- Edge function **`portal-account-revoke`** (service_role):
+  1. Elimina el usuario de `auth.users` (`auth.admin.deleteUser`) → cascada limpia sesiones/refresh tokens.
+  2. Marca `status = 'revoked'`, `revoked_at = now()`, `revoked_reason` (opcional).
+  3. Mantiene la fila en `employee_portal_accounts` para auditoría (histórico de quién tuvo acceso y cuándo se revocó). El `user_id` queda como referencia huérfana pero la fila sobrevive.
+- UI: diálogo "¿Revocar el acceso al portal de {nombre}? Se eliminará su usuario y no podrá ingresar más."
 
-1. **Conectar tu Supabase** siguiendo el Paso 1.
-2. Confirmarme aquí cuando esté listo, indicando si quieres mantener los nombres de buckets actuales y si hay alguna región preferida (us-east-1, sa-east-1, etc.) al crear el proyecto.
-3. Tener a mano el `service_role` de la central para volverlo a pegar como secret cuando te lo pida.
+### 2.4 Revocación automática al retiro
+- Hook en `EmpleadoForm` y en cualquier flujo de cambio de estado: cuando `employees.status` pasa a `retirado` (o equivalente), se invoca automáticamente `portal-account-revoke` para esa fila.
+- Trigger redundante en BD: `AFTER UPDATE ON employees` — si `NEW.status = 'retirado'` y existe `employee_portal_accounts` activo, marca `status = 'revoked'` y emite NOTIFY para que un job (o el propio frontend admin) llame a la edge function que borra el auth user.
+- En la Ficha Técnica del empleado retirado: badge **"Acceso revocado el {fecha}"**.
 
-## Riesgos y notas
+### 2.5 Reactivación
+- Si un empleado revocado vuelve a la empresa: botón **"Reactivar portal"** sobre la misma fila → vuelve a crear el `auth.users`, asigna password = documento, marca `status = 'active'` y `must_change_password = true`.
 
-- **Tiempo de recreación**: el proyecto tiene ~50 tablas, varios enums, ~100 políticas RLS y 5 buckets. Recrear todo toma 1–2 ciclos de migración aprobados por ti.
-- **Edge functions**: se redepliegan automáticamente, pero las que dependan de secrets requerirán que reingreses los valores.
-- **URL del proyecto cambia**: cualquier cosa que apunte hard-coded al ref viejo (no debería haber, pero confirmaremos) se actualiza solo via `.env`.
-- **OAuth providers** (si llegaras a usar Google login): habría que reconfigurar en tu Supabase.
+### 2.6 Panel admin de cuentas
+Nueva pestaña en Configuración: **Portal del Empleado**.
+- Tabla con: empleado, documento, estado (Sin cuenta / Activo / Revocado), último login, debe cambiar clave.
+- Filtros por estado y búsqueda.
+- Acciones por fila: Activar / Resetear / Revocar / Reactivar.
+- Acción masiva opcional (solo botón "Activar para todos los activos sin cuenta") — sin bulk upload de archivos, simplemente toma a quienes ya están en la tabla `employees`.
+
+---
+
+## 3. Ruta y layout del portal
+
+Ruta **`/Funcionarios`** (case-insensitive con alias `/funcionarios`):
+
+```
+/Funcionarios               → Login (documento + contraseña)
+/Funcionarios/cambiar-clave → Forzado si must_change_password
+/Funcionarios/inicio        → Dashboard personal
+/Funcionarios/pendientes/firmar
+/Funcionarios/pendientes/hacer
+/Funcionarios/cursos
+/Funcionarios/evaluaciones
+/Funcionarios/eventos
+/Funcionarios/examenes
+/Funcionarios/vigilancias
+/Funcionarios/dotacion
+/Funcionarios/reglamento
+/Funcionarios/desprendibles
+/Funcionarios/certificados
+/Funcionarios/perfil
+```
+
+- **Layout independiente** `EmployeePortalLayout` (header con foto + nombre + tenant + cerrar sesión; sidebar simplificado con iconos grandes y texto, pensado para baja alfabetización digital).
+- **Guardia** `EmployeePortalProtectedRoute`: valida sesión, que exista `employee_portal_accounts` con `status='active'` para el `user_id`, y redirige a `cambiar-clave` si `must_change_password = true`. Si el empleado fue revocado mientras tenía sesión activa, lo expulsa.
+- **Aislamiento de sesión:** cliente Supabase del portal con `storageKey: 'nexurh-portal-auth'` para que no choque con la sesión del admin abierta en la misma máquina.
+
+---
+
+## 4. Vistas (todas filtradas por `employee_id` del usuario logueado)
+
+### Dashboard `/Funcionarios/inicio`
+Tarjetas grandes:
+- 🖊️ **N pendientes por firmar**
+- ✅ **N pendientes por hacer** (cursos, evaluaciones, eventos, reglamento)
+- 💰 **Último desprendible disponible**
+- 📄 **Certificados disponibles**
+- Alertas personales (exámenes vencidos, dotación próxima a vencer)
+
+### Pendientes por firmar
+Consulta cruzada sobre `evaluations`, `dotacion`, `exams`, `regulation_acknowledgments`, `event_participants`, `courses`. Botón **Firmar ahora** abre `SignatureDialog` ya existente.
+
+### Pendientes por hacer
+Cursos sin completar, evaluaciones sin responder, eventos sin asistencia confirmada, reglamentos vigentes sin acknowledgment.
+
+### Módulos con consulta + acción
+| Módulo | Acción del empleado |
+|---|---|
+| Cursos | Marcar completado, subir evidencia, firmar |
+| Evaluaciones | Responder autoevaluación / 360 |
+| Eventos | Confirmar asistencia, firmar |
+| Exámenes | Ver resultado, firmar consentimiento |
+| Vigilancias | Solo consulta |
+| Dotación | Firmar recibido |
+| Reglamento | Leer (scroll-verify) + marcar leído |
+| Desprendibles | Ver y descargar PDF |
+| Certificados | Generar + descargar según plantillas disponibles |
+| Perfil | Editar datos básicos (teléfono, dirección, contacto emergencia) |
+
+---
+
+## 5. Seguridad / RLS
+
+Función security-definer **`get_current_employee_id()`** → devuelve el `employee_id` activo del `auth.uid()` actual.
+
+Políticas **adicionales** (no reemplazan las admin) en tablas operativas:
+- `SELECT` permitido si `employee_id = get_current_employee_id()` y la cuenta está `active`.
+- `UPDATE/INSERT` permitido solo en campos firma/respuesta/asistencia/acknowledge sobre filas propias.
+- `payroll_records`, `payroll_items`: SELECT solo de las propias.
+- `signatures`, `evidences`: INSERT propias.
+
+Storage:
+- `signatures`, `evidences`: empleado puede subir bajo prefijo `employee/{employee_id}/...`.
+- `exam-documents`: empleado puede SELECT sólo los vinculados a sus `exams`.
+
+Edge functions de gestión (`portal-account-create`, `portal-account-reset-password`, `portal-account-revoke`):
+- Verifican Bearer JWT del admin que llama.
+- Validan que el admin es del mismo tenant que el empleado objetivo.
+- Validan permiso de módulo `portal_accounts` (`manage`) o `is_super_admin`.
+
+---
+
+## 6. UX para baja alfabetización digital
+
+- Tipografía grande (16-18px base), iconos por sección, botones primarios anchos.
+- Login: campo grande con `inputMode="numeric"` para documento.
+- Mensajes en español claro sin tecnicismos.
+- Mobile-first responsive (la mayoría accederá desde celular).
+
+---
+
+## 7. Detalles técnicos
+
+**Archivos nuevos**
+- Páginas portal: `src/pages/portal/PortalLogin.tsx`, `PortalChangePassword.tsx`, `PortalDashboard.tsx`, `PortalPendientesFirmar.tsx`, `PortalPendientesHacer.tsx`, `PortalCursos.tsx`, `PortalEvaluaciones.tsx`, `PortalEventos.tsx`, `PortalExamenes.tsx`, `PortalVigilancias.tsx`, `PortalDotacion.tsx`, `PortalReglamento.tsx`, `PortalDesprendibles.tsx`, `PortalCertificados.tsx`, `PortalPerfil.tsx`
+- Componentes portal: `src/components/portal/EmployeePortalLayout.tsx`, `EmployeePortalSidebar.tsx`, `EmployeePortalHeader.tsx`, `EmployeePortalProtectedRoute.tsx`, `PendingSummaryCard.tsx`
+- Cliente y hook: `src/integrations/supabase/portalClient.ts` (storageKey separado), `src/hooks/useEmployeePortalAuth.tsx`
+- Admin: `src/components/settings/PortalAccountsSettings.tsx`, botones `PortalAccountActions.tsx` reutilizables en Ficha Técnica
+- Edge functions: `portal-account-create`, `portal-account-reset-password`, `portal-account-revoke`
+
+**Migraciones SQL**
+1. Tabla `employee_portal_accounts` + GRANT + RLS.
+2. Función `get_current_employee_id()`.
+3. RPC pública `resolve_employee_login(p_documento text, p_tenant_slug text)`.
+4. Trigger `AFTER UPDATE ON employees` para marcar `status='revoked'` cuando el empleado pase a retirado.
+5. Políticas RLS portal en: `employees` (perfil propio), `payroll_records`, `payroll_items`, `evaluations`, `evaluation_responses`, `courses`, `events`, `event_participants`, `exams`, `vigilancias`, `dotacion`, `regulations`, `regulation_acknowledgments`, `signatures`, `evidences`, `certificate_templates`.
+6. Storage policies portal en `signatures`, `evidences`, `exam-documents`.
+
+**Integración con admin**
+- Ficha Técnica → tarjeta **"Acceso al portal"** con estado actual + botones Activar / Resetear / Revocar / Reactivar.
+- Configuración → pestaña **"Portal del Empleado"**.
+- Cambio de estado del empleado a "retirado" dispara revocación automática.
+
+---
+
+## 8. Entrega por fases
+
+1. **Fase 1 (esta iteración):**
+   - Schema + RLS + las 3 edge functions de gestión.
+   - Login del portal + cambio de clave forzado.
+   - Dashboard + Pendientes por firmar + Desprendibles + Reglamento.
+   - Tarjeta de gestión en Ficha Técnica (Activar / Resetear / Revocar / Reactivar).
+   - Pestaña "Portal del Empleado" en Configuración con la lista y acciones.
+   - Revocación automática al retiro.
+2. **Fase 2:** cursos, evaluaciones, eventos, exámenes, dotación, certificados, perfil editable del empleado.
+3. **Fase 3:** notificaciones push/email al empleado, PWA mobile, evidencias del lado del empleado.
+
+Confirma para arrancar con la **Fase 1**.
