@@ -81,6 +81,12 @@ const App = () => (
               <Route path="/Funcionarios/reglamento" element={<EmployeePortalProtectedRoute><PortalReglamento /></EmployeePortalProtectedRoute>} />
               <Route path="/Funcionarios/certificados" element={<EmployeePortalProtectedRoute><PortalCertificados /></EmployeePortalProtectedRoute>} />
               <Route path="/Funcionarios/perfil" element={<EmployeePortalProtectedRoute><PortalPerfil /></EmployeePortalProtectedRoute>} />
+              <Route path="/Funcionarios/cursos" element={<EmployeePortalProtectedRoute><PortalCursos /></EmployeePortalProtectedRoute>} />
+              <Route path="/Funcionarios/evaluaciones" element={<EmployeePortalProtectedRoute><PortalEvaluaciones /></EmployeePortalProtectedRoute>} />
+              <Route path="/Funcionarios/eventos" element={<EmployeePortalProtectedRoute><PortalEventos /></EmployeePortalProtectedRoute>} />
+              <Route path="/Funcionarios/examenes" element={<EmployeePortalProtectedRoute><PortalExamenes /></EmployeePortalProtectedRoute>} />
+              <Route path="/Funcionarios/dotacion" element={<EmployeePortalProtectedRoute><PortalDotacion /></EmployeePortalProtectedRoute>} />
+              <Route path="/Funcionarios/vigilancias" element={<EmployeePortalProtectedRoute><PortalVigilancias /></EmployeePortalProtectedRoute>} />
 
               <Route path="*" element={<NotFound />} />
             </Routes>
