@@ -34,6 +34,12 @@ import PortalDesprendibles from "./pages/portal/PortalDesprendibles";
 import PortalReglamento from "./pages/portal/PortalReglamento";
 import PortalCertificados from "./pages/portal/PortalCertificados";
 import PortalPerfil from "./pages/portal/PortalPerfil";
+import PortalCursos from "./pages/portal/PortalCursos";
+import PortalEvaluaciones from "./pages/portal/PortalEvaluaciones";
+import PortalEventos from "./pages/portal/PortalEventos";
+import PortalExamenes from "./pages/portal/PortalExamenes";
+import PortalDotacion from "./pages/portal/PortalDotacion";
+import PortalVigilancias from "./pages/portal/PortalVigilancias";
 
 const queryClient = new QueryClient();
 
