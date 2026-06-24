@@ -66,7 +66,7 @@ export default function PortalCursos() {
 }
 
 function labelStatus(s: string) {
-  return ({ programado: 'Programado', en_curso: 'En curso', completado: 'Completado', vencido: 'Vencido', cancelado: 'Cancelado' } as any)[s] || s || '—';
+  return ({ pendiente: 'Pendiente', en_progreso: 'En progreso', completado: 'Completado', vencido: 'Vencido', cancelado: 'Cancelado' } as any)[s] || s || '—';
 }
 function statusVariant(s: string): any {
   if (s === 'completado') return 'default';

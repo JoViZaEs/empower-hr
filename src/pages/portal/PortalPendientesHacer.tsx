@@ -16,7 +16,7 @@ export default function PortalPendientesHacer() {
     enabled: !!eid,
     queryFn: async () => {
       const [cursos, evals, eventos, regs, acks] = await Promise.all([
-        portalSupabase.from('courses').select('id, course_name, status', { count: 'exact' }).eq('employee_id', eid!).in('status', ['programado', 'en_curso']),
+        portalSupabase.from('courses').select('id, course_name, status', { count: 'exact' }).eq('employee_id', eid!).in('status', ['pendiente', 'en_progreso']),
         portalSupabase.from('evaluations').select('id, period', { count: 'exact' }).eq('evaluator_id', eid!).neq('status', 'completada'),
         portalSupabase.from('event_participants').select('id, events(title, event_date)').eq('employee_id', eid!).eq('signed', false),
         portalSupabase.from('regulations').select('id, title, version').eq('status', 'vigente'),

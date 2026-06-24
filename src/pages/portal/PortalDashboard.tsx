@@ -17,7 +17,7 @@ export default function PortalDashboard() {
       const [signDot, signEvt, cursos, evals, exams, lastPayroll, regs, acks] = await Promise.all([
         portalSupabase.from('dotacion').select('id', { count: 'exact', head: true }).eq('employee_id', eid!).is('signature_url', null),
         portalSupabase.from('event_participants').select('id', { count: 'exact', head: true }).eq('employee_id', eid!).eq('signed', false),
-        portalSupabase.from('courses').select('id', { count: 'exact', head: true }).eq('employee_id', eid!).in('status', ['programado', 'en_curso']),
+        portalSupabase.from('courses').select('id', { count: 'exact', head: true }).eq('employee_id', eid!).in('status', ['pendiente', 'en_progreso']),
         portalSupabase.from('evaluations').select('id', { count: 'exact', head: true }).eq('evaluator_id', eid!).neq('status', 'completada'),
         portalSupabase.from('exams').select('id, exam_date, expiry_date').eq('employee_id', eid!).order('exam_date', { ascending: false }).limit(1).maybeSingle(),
         portalSupabase.from('payroll_records').select('payment_date, net_pay').eq('employee_id', eid!).order('payment_date', { ascending: false }).limit(1).maybeSingle(),
