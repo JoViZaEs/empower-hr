@@ -1,206 +1,66 @@
-# Portal del Empleado — `/Funcionarios`
+## Fase 2 del Portal del Empleado
 
-Portal paralelo al sistema administrativo donde cada empleado autentica con **documento + contraseña** y ve/actúa únicamente sobre lo suyo. Incluye **ciclo de vida completo de la cuenta**: alta individual, reset de clave y revocación al retiro.
+Completar las vistas operativas restantes para que el empleado vea y actúe sobre todos sus registros desde `/Funcionarios`.
 
----
+### Módulos a habilitar
 
-## 1. Modelo de autenticación
+1. **Cursos y certificaciones** (`/Funcionarios/cursos`)
+   - Listado de cursos asignados al empleado con estado (pendiente, en curso, completado, vencido).
+   - Detalle del curso: proveedor, fechas, certificado adjunto (descargable).
+   - Acción: marcar progreso si aplica + firmar constancia de asistencia.
 
-Supabase Auth requiere email → generamos un **email sintético interno** por empleado:
+2. **Evaluaciones** (`/Funcionarios/evaluaciones`)
+   - Evaluaciones pendientes por responder (autoevaluación y 360 donde el empleado es evaluador).
+   - Evaluaciones donde fue evaluado: ver resultado y firmar de enterado.
+   - Reutilizar `EvaluacionExecForm` en modo portal.
 
-```
-{documento}@portal.{tenant_slug}.nexurh
-```
+3. **Eventos / inducciones / capacitaciones** (`/Funcionarios/eventos`)
+   - Eventos donde participa con estado de asistencia.
+   - Acción: confirmar asistencia y firmar acta del evento.
 
-- Invisible para el usuario: en el login solo escribe **documento + contraseña**.
-- El frontend resuelve documento → email sintético vía RPC pública `resolve_employee_login(documento, tenant_slug?)`.
-- **Contraseña inicial = el propio número de documento**; flag `must_change_password = true` fuerza el cambio en el primer ingreso.
+4. **Exámenes médicos** (`/Funcionarios/examenes`)
+   - Historial de exámenes ocupacionales (ingreso, periódicos, egreso).
+   - Descarga de documento del examen (respetando privacidad: solo los suyos).
+   - Firma de constancia cuando aplique.
 
-### Nueva tabla `employee_portal_accounts`
-| campo | uso |
-|---|---|
-| `employee_id` | FK a `employees` (unique) |
-| `tenant_id` | multi-tenant |
-| `user_id` | FK a `auth.users` |
-| `synthetic_email` | unique, usado para login |
-| `must_change_password` | bool, fuerza reset en primer login |
-| `status` | `active` / `revoked` |
-| `last_login_at`, `activated_at`, `revoked_at`, `revoked_reason` | telemetría |
+5. **Dotación / EPP** (`/Funcionarios/dotacion`)
+   - Entregas recibidas con tallas y fechas.
+   - Pendientes por firmar entrega.
 
-Tabla nueva → con `GRANT` + RLS (empleado lee solo su fila; admin del tenant ve todas).
+6. **Certificados laborales** (`/Funcionarios/certificados`)
+   - Generación de certificados a partir de plantillas habilitadas para el empleado.
+   - Descarga en PDF e historial de descargas.
 
----
+7. **Perfil editable** (`/Funcionarios/perfil`)
+   - Datos personales editables permitidos (teléfono, dirección, contacto emergencia, EPS, ARL, foto).
+   - Datos laborales en solo lectura.
+   - Cambio de contraseña en cualquier momento.
 
-## 2. Ciclo de vida de la cuenta (gestión por el admin)
+8. **Vigilancia epidemiológica** (`/Funcionarios/vigilancias`)
+   - Vigilancias en las que está incluido (solo lectura) con próximas fechas de seguimiento.
 
-Todas las acciones se hacen desde **Configuración → Portal del Empleado** y desde la **Ficha Técnica de cada empleado** (botones contextuales).
+### Cambios transversales
 
-### 2.1 Alta individual con un click — **"Activar portal"**
-- Disponible en la Ficha Técnica de cualquier empleado sin cuenta.
-- Edge function **`portal-account-create`** (service_role):
-  1. Valida que el empleado existe, está activo y pertenece al tenant del admin.
-  2. Crea usuario en `auth.users` con email sintético + password = documento + `email_confirm: true`.
-  3. Inserta en `employee_portal_accounts` con `must_change_password = true`, `status = 'active'`.
-  4. Devuelve confirmación (sin enviar email — el admin entrega las credenciales).
-- UI: botón **"Activar acceso al portal"** → diálogo de confirmación que muestra "Usuario: {documento} · Contraseña inicial: {documento} · El empleado deberá cambiarla al ingresar."
+- **Dashboard del portal**: ampliar contadores para incluir cursos vencidos, evaluaciones pendientes y exámenes próximos.
+- **Sidebar del portal**: añadir las nuevas entradas con íconos grandes y etiquetas en español sencillo.
+- **Firmas**: centralizar la apertura de `SignatureDialog` desde cada módulo, escribiendo en `signatures` con `signer_id = employee_id` actual.
+- **Hook `usePortalEmployee`**: extender para exponer helpers (`canEditField`, `currentEmployeeId`, `tenantId`).
+- **RLS adicional**: revisar y, si falta, añadir políticas para que el empleado pueda:
+  - `SELECT/UPDATE` en `evaluation_responses` propias.
+  - `SELECT` en `event_participants`, `courses`, `exams`, `vigilancias`, `dotacion`, `certificate_templates` filtrados por `employee_id = get_current_employee_id()`.
+  - `INSERT` en `signatures` y `evidences` ligados a su `employee_id`.
+- **Storage**: políticas para que el empleado descargue solo archivos cuyo `employee_id` coincida (`exam-documents`, `evidences`, `signatures`).
 
-### 2.2 Resetear contraseña — **"Resetear clave"**
-- Disponible en cuentas activas.
-- Edge function **`portal-account-reset-password`** (service_role):
-  1. Resetea la contraseña en `auth.users` al número de documento.
-  2. Marca `must_change_password = true`.
-  3. Invalida sesiones activas del empleado (`auth.admin.signOut`).
-- UI: diálogo de confirmación → al ejecutar muestra "Contraseña reseteada al documento. El empleado deberá cambiarla al ingresar."
+### Detalles técnicos
 
-### 2.3 Revocar acceso — **"Revocar portal"**
-- Disponible en cuentas activas.
-- Edge function **`portal-account-revoke`** (service_role):
-  1. Elimina el usuario de `auth.users` (`auth.admin.deleteUser`) → cascada limpia sesiones/refresh tokens.
-  2. Marca `status = 'revoked'`, `revoked_at = now()`, `revoked_reason` (opcional).
-  3. Mantiene la fila en `employee_portal_accounts` para auditoría (histórico de quién tuvo acceso y cuándo se revocó). El `user_id` queda como referencia huérfana pero la fila sobrevive.
-- UI: diálogo "¿Revocar el acceso al portal de {nombre}? Se eliminará su usuario y no podrá ingresar más."
+- Reutilizar componentes existentes (`SignatureDialog`, `EvaluacionExecForm`, `RegulationViewer`, `CertificateGenerator`) envueltos en wrappers de portal que fuercen `employee_id = currentEmployeeId`.
+- Cliente: `portalSupabase` (ya creado) para todas las queries del portal.
+- Tipografía 16–18px, botones grandes, mensajes en español claro.
+- Mobile-first: layout de una sola columna en <768px, tarjetas apilables.
+- Sin cambios al esquema más allá de políticas RLS adicionales y, si fuera necesario, una vista materializada de "pendientes por empleado" para el dashboard.
 
-### 2.4 Revocación automática al retiro
-- Hook en `EmpleadoForm` y en cualquier flujo de cambio de estado: cuando `employees.status` pasa a `retirado` (o equivalente), se invoca automáticamente `portal-account-revoke` para esa fila.
-- Trigger redundante en BD: `AFTER UPDATE ON employees` — si `NEW.status = 'retirado'` y existe `employee_portal_accounts` activo, marca `status = 'revoked'` y emite NOTIFY para que un job (o el propio frontend admin) llame a la edge function que borra el auth user.
-- En la Ficha Técnica del empleado retirado: badge **"Acceso revocado el {fecha}"**.
+### Fuera de alcance (Fase 3)
 
-### 2.5 Reactivación
-- Si un empleado revocado vuelve a la empresa: botón **"Reactivar portal"** sobre la misma fila → vuelve a crear el `auth.users`, asigna password = documento, marca `status = 'active'` y `must_change_password = true`.
-
-### 2.6 Panel admin de cuentas
-Nueva pestaña en Configuración: **Portal del Empleado**.
-- Tabla con: empleado, documento, estado (Sin cuenta / Activo / Revocado), último login, debe cambiar clave.
-- Filtros por estado y búsqueda.
-- Acciones por fila: Activar / Resetear / Revocar / Reactivar.
-- Acción masiva opcional (solo botón "Activar para todos los activos sin cuenta") — sin bulk upload de archivos, simplemente toma a quienes ya están en la tabla `employees`.
-
----
-
-## 3. Ruta y layout del portal
-
-Ruta **`/Funcionarios`** (case-insensitive con alias `/funcionarios`):
-
-```
-/Funcionarios               → Login (documento + contraseña)
-/Funcionarios/cambiar-clave → Forzado si must_change_password
-/Funcionarios/inicio        → Dashboard personal
-/Funcionarios/pendientes/firmar
-/Funcionarios/pendientes/hacer
-/Funcionarios/cursos
-/Funcionarios/evaluaciones
-/Funcionarios/eventos
-/Funcionarios/examenes
-/Funcionarios/vigilancias
-/Funcionarios/dotacion
-/Funcionarios/reglamento
-/Funcionarios/desprendibles
-/Funcionarios/certificados
-/Funcionarios/perfil
-```
-
-- **Layout independiente** `EmployeePortalLayout` (header con foto + nombre + tenant + cerrar sesión; sidebar simplificado con iconos grandes y texto, pensado para baja alfabetización digital).
-- **Guardia** `EmployeePortalProtectedRoute`: valida sesión, que exista `employee_portal_accounts` con `status='active'` para el `user_id`, y redirige a `cambiar-clave` si `must_change_password = true`. Si el empleado fue revocado mientras tenía sesión activa, lo expulsa.
-- **Aislamiento de sesión:** cliente Supabase del portal con `storageKey: 'nexurh-portal-auth'` para que no choque con la sesión del admin abierta en la misma máquina.
-
----
-
-## 4. Vistas (todas filtradas por `employee_id` del usuario logueado)
-
-### Dashboard `/Funcionarios/inicio`
-Tarjetas grandes:
-- 🖊️ **N pendientes por firmar**
-- ✅ **N pendientes por hacer** (cursos, evaluaciones, eventos, reglamento)
-- 💰 **Último desprendible disponible**
-- 📄 **Certificados disponibles**
-- Alertas personales (exámenes vencidos, dotación próxima a vencer)
-
-### Pendientes por firmar
-Consulta cruzada sobre `evaluations`, `dotacion`, `exams`, `regulation_acknowledgments`, `event_participants`, `courses`. Botón **Firmar ahora** abre `SignatureDialog` ya existente.
-
-### Pendientes por hacer
-Cursos sin completar, evaluaciones sin responder, eventos sin asistencia confirmada, reglamentos vigentes sin acknowledgment.
-
-### Módulos con consulta + acción
-| Módulo | Acción del empleado |
-|---|---|
-| Cursos | Marcar completado, subir evidencia, firmar |
-| Evaluaciones | Responder autoevaluación / 360 |
-| Eventos | Confirmar asistencia, firmar |
-| Exámenes | Ver resultado, firmar consentimiento |
-| Vigilancias | Solo consulta |
-| Dotación | Firmar recibido |
-| Reglamento | Leer (scroll-verify) + marcar leído |
-| Desprendibles | Ver y descargar PDF |
-| Certificados | Generar + descargar según plantillas disponibles |
-| Perfil | Editar datos básicos (teléfono, dirección, contacto emergencia) |
-
----
-
-## 5. Seguridad / RLS
-
-Función security-definer **`get_current_employee_id()`** → devuelve el `employee_id` activo del `auth.uid()` actual.
-
-Políticas **adicionales** (no reemplazan las admin) en tablas operativas:
-- `SELECT` permitido si `employee_id = get_current_employee_id()` y la cuenta está `active`.
-- `UPDATE/INSERT` permitido solo en campos firma/respuesta/asistencia/acknowledge sobre filas propias.
-- `payroll_records`, `payroll_items`: SELECT solo de las propias.
-- `signatures`, `evidences`: INSERT propias.
-
-Storage:
-- `signatures`, `evidences`: empleado puede subir bajo prefijo `employee/{employee_id}/...`.
-- `exam-documents`: empleado puede SELECT sólo los vinculados a sus `exams`.
-
-Edge functions de gestión (`portal-account-create`, `portal-account-reset-password`, `portal-account-revoke`):
-- Verifican Bearer JWT del admin que llama.
-- Validan que el admin es del mismo tenant que el empleado objetivo.
-- Validan permiso de módulo `portal_accounts` (`manage`) o `is_super_admin`.
-
----
-
-## 6. UX para baja alfabetización digital
-
-- Tipografía grande (16-18px base), iconos por sección, botones primarios anchos.
-- Login: campo grande con `inputMode="numeric"` para documento.
-- Mensajes en español claro sin tecnicismos.
-- Mobile-first responsive (la mayoría accederá desde celular).
-
----
-
-## 7. Detalles técnicos
-
-**Archivos nuevos**
-- Páginas portal: `src/pages/portal/PortalLogin.tsx`, `PortalChangePassword.tsx`, `PortalDashboard.tsx`, `PortalPendientesFirmar.tsx`, `PortalPendientesHacer.tsx`, `PortalCursos.tsx`, `PortalEvaluaciones.tsx`, `PortalEventos.tsx`, `PortalExamenes.tsx`, `PortalVigilancias.tsx`, `PortalDotacion.tsx`, `PortalReglamento.tsx`, `PortalDesprendibles.tsx`, `PortalCertificados.tsx`, `PortalPerfil.tsx`
-- Componentes portal: `src/components/portal/EmployeePortalLayout.tsx`, `EmployeePortalSidebar.tsx`, `EmployeePortalHeader.tsx`, `EmployeePortalProtectedRoute.tsx`, `PendingSummaryCard.tsx`
-- Cliente y hook: `src/integrations/supabase/portalClient.ts` (storageKey separado), `src/hooks/useEmployeePortalAuth.tsx`
-- Admin: `src/components/settings/PortalAccountsSettings.tsx`, botones `PortalAccountActions.tsx` reutilizables en Ficha Técnica
-- Edge functions: `portal-account-create`, `portal-account-reset-password`, `portal-account-revoke`
-
-**Migraciones SQL**
-1. Tabla `employee_portal_accounts` + GRANT + RLS.
-2. Función `get_current_employee_id()`.
-3. RPC pública `resolve_employee_login(p_documento text, p_tenant_slug text)`.
-4. Trigger `AFTER UPDATE ON employees` para marcar `status='revoked'` cuando el empleado pase a retirado.
-5. Políticas RLS portal en: `employees` (perfil propio), `payroll_records`, `payroll_items`, `evaluations`, `evaluation_responses`, `courses`, `events`, `event_participants`, `exams`, `vigilancias`, `dotacion`, `regulations`, `regulation_acknowledgments`, `signatures`, `evidences`, `certificate_templates`.
-6. Storage policies portal en `signatures`, `evidences`, `exam-documents`.
-
-**Integración con admin**
-- Ficha Técnica → tarjeta **"Acceso al portal"** con estado actual + botones Activar / Resetear / Revocar / Reactivar.
-- Configuración → pestaña **"Portal del Empleado"**.
-- Cambio de estado del empleado a "retirado" dispara revocación automática.
-
----
-
-## 8. Entrega por fases
-
-1. **Fase 1 (esta iteración):**
-   - Schema + RLS + las 3 edge functions de gestión.
-   - Login del portal + cambio de clave forzado.
-   - Dashboard + Pendientes por firmar + Desprendibles + Reglamento.
-   - Tarjeta de gestión en Ficha Técnica (Activar / Resetear / Revocar / Reactivar).
-   - Pestaña "Portal del Empleado" en Configuración con la lista y acciones.
-   - Revocación automática al retiro.
-2. **Fase 2:** cursos, evaluaciones, eventos, exámenes, dotación, certificados, perfil editable del empleado.
-3. **Fase 3:** notificaciones push/email al empleado, PWA mobile, evidencias del lado del empleado.
-
-Confirma para arrancar con la **Fase 1**.
+- Notificaciones push/email al empleado.
+- PWA / instalación móvil.
+- Carga de evidencias desde el lado empleado (ya cubierto parcialmente; se ampliará en Fase 3).
