@@ -23,6 +23,7 @@ import Nomina from "./pages/Nomina";
 import Reglamento from "./pages/Reglamento";
 import Configuracion from "./pages/Configuracion";
 import Notificaciones from "./pages/Notificaciones";
+import Incapacidades from "./pages/Incapacidades";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 import PortalLogin from "./pages/portal/PortalLogin";
@@ -40,6 +41,8 @@ import PortalEventos from "./pages/portal/PortalEventos";
 import PortalExamenes from "./pages/portal/PortalExamenes";
 import PortalDotacion from "./pages/portal/PortalDotacion";
 import PortalVigilancias from "./pages/portal/PortalVigilancias";
+import PortalIncapacidades from "./pages/portal/PortalIncapacidades";
+import PortalHistorial from "./pages/portal/PortalHistorial";
 
 const queryClient = new QueryClient();
 
@@ -69,6 +72,7 @@ const App = () => (
               <Route path="/reglamento" element={<ProtectedRoute><Reglamento /></ProtectedRoute>} />
               <Route path="/configuracion" element={<ProtectedRoute><Configuracion /></ProtectedRoute>} />
               <Route path="/notificaciones" element={<ProtectedRoute><Notificaciones /></ProtectedRoute>} />
+              <Route path="/incapacidades" element={<ProtectedRoute><Incapacidades /></ProtectedRoute>} />
 
               {/* Employee Portal — case-insensitive aliases */}
               <Route path="/Funcionarios" element={<PortalLogin />} />
@@ -87,6 +91,8 @@ const App = () => (
               <Route path="/Funcionarios/examenes" element={<EmployeePortalProtectedRoute><PortalExamenes /></EmployeePortalProtectedRoute>} />
               <Route path="/Funcionarios/dotacion" element={<EmployeePortalProtectedRoute><PortalDotacion /></EmployeePortalProtectedRoute>} />
               <Route path="/Funcionarios/vigilancias" element={<EmployeePortalProtectedRoute><PortalVigilancias /></EmployeePortalProtectedRoute>} />
+              <Route path="/Funcionarios/incapacidades" element={<EmployeePortalProtectedRoute><PortalIncapacidades /></EmployeePortalProtectedRoute>} />
+              <Route path="/Funcionarios/historial" element={<EmployeePortalProtectedRoute><PortalHistorial /></EmployeePortalProtectedRoute>} />
 
               <Route path="*" element={<NotFound />} />
             </Routes>
