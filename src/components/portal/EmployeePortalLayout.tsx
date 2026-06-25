@@ -5,8 +5,9 @@ import { Button } from '@/components/ui/button';
 import {
   Home, PenTool, ClipboardList, FileText, DollarSign, Award,
   User, LogOut, BookOpen, GraduationCap, ClipboardCheck, CalendarDays,
-  Stethoscope, Shirt, ShieldAlert,
+  Stethoscope, Shirt, ShieldAlert, HeartPulse, History,
 } from 'lucide-react';
+import { PortalNotificationBell } from './PortalNotificationBell';
 
 const navItems = [
   { to: '/Funcionarios/inicio', label: 'Inicio', icon: Home },
@@ -16,11 +17,13 @@ const navItems = [
   { to: '/Funcionarios/evaluaciones', label: 'Evaluaciones', icon: ClipboardCheck },
   { to: '/Funcionarios/eventos', label: 'Eventos', icon: CalendarDays },
   { to: '/Funcionarios/examenes', label: 'Exámenes médicos', icon: Stethoscope },
+  { to: '/Funcionarios/incapacidades', label: 'Incapacidades', icon: HeartPulse },
   { to: '/Funcionarios/vigilancias', label: 'Vigilancia', icon: ShieldAlert },
   { to: '/Funcionarios/dotacion', label: 'Dotación', icon: Shirt },
   { to: '/Funcionarios/desprendibles', label: 'Desprendibles', icon: DollarSign },
   { to: '/Funcionarios/certificados', label: 'Certificados', icon: Award },
   { to: '/Funcionarios/reglamento', label: 'Reglamento', icon: BookOpen },
+  { to: '/Funcionarios/historial', label: 'Mi historial', icon: History },
   { to: '/Funcionarios/perfil', label: 'Mi perfil', icon: User },
 ];
 
@@ -42,9 +45,12 @@ export function EmployeePortalLayout({ children }: { children: ReactNode }) {
               <p className="text-sm text-muted-foreground leading-tight">{employee?.position || 'Empleado'}</p>
             </div>
           </div>
-          <Button variant="ghost" size="lg" onClick={async () => { await signOut(); navigate('/Funcionarios'); }}>
-            <LogOut className="h-5 w-5 mr-2" /> Salir
-          </Button>
+          <div className="flex items-center gap-2">
+            <PortalNotificationBell />
+            <Button variant="ghost" size="lg" onClick={async () => { await signOut(); navigate('/Funcionarios'); }}>
+              <LogOut className="h-5 w-5 mr-2" /> Salir
+            </Button>
+          </div>
         </div>
       </header>
 

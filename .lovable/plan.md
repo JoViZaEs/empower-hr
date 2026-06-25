@@ -1,66 +1,98 @@
-## Fase 2 del Portal del Empleado
+# Fase 3 del portal + Módulo de Incapacidades
 
-Completar las vistas operativas restantes para que el empleado vea y actúe sobre todos sus registros desde `/Funcionarios`.
+## Resumen
+Implementar todas las mejoras propuestas (notificaciones al empleado, PWA, carga de evidencias, historial) y crear desde cero el módulo de **Incapacidades** — tanto en el sistema admin como en el portal del empleado, ya que es justamente lo que necesita el empleado poder cargar.
 
-### Módulos a habilitar
+---
 
-1. **Cursos y certificaciones** (`/Funcionarios/cursos`)
-   - Listado de cursos asignados al empleado con estado (pendiente, en curso, completado, vencido).
-   - Detalle del curso: proveedor, fechas, certificado adjunto (descargable).
-   - Acción: marcar progreso si aplica + firmar constancia de asistencia.
+## 1. Nuevo módulo: Incapacidades (admin + portal)
 
-2. **Evaluaciones** (`/Funcionarios/evaluaciones`)
-   - Evaluaciones pendientes por responder (autoevaluación y 360 donde el empleado es evaluador).
-   - Evaluaciones donde fue evaluado: ver resultado y firmar de enterado.
-   - Reutilizar `EvaluacionExecForm` en modo portal.
+### Backend
+- Tabla `incapacidades`:
+  - `id`, `tenant_id`, `employee_id`, `tipo` (enum: enfermedad_general, accidente_trabajo, enfermedad_laboral, licencia_maternidad, licencia_paternidad, licencia_luto, otro)
+  - `fecha_inicio`, `fecha_fin`, `dias`, `diagnostico` (texto), `codigo_cie` (opcional)
+  - `entidad` (EPS/ARL/otro), `numero_radicado`, `prorroga_de` (FK self)
+  - `estado` (enum: registrada, en_revision, aprobada, rechazada, transcrita_nomina)
+  - `origen` (admin | portal_empleado)
+  - `documento_url` (PDF de la incapacidad), `notas_internas`
+  - `created_by`, `reviewed_by`, `reviewed_at`, timestamps
+- Bucket `incapacidades` (privado) con políticas RLS análogas a `exam-documents`.
+- RLS:
+  - Admin: ver/editar todas de su tenant según permiso `incapacidades.*`.
+  - Empleado vía portal: `SELECT` solo las propias; `INSERT` solo las propias con `origen='portal_empleado'` y `estado='registrada'`; sin `UPDATE`/`DELETE`.
+- Tipo de maestro `incapacidad_types` (estándar + personalizables por tenant), siguiendo el patrón ya establecido.
 
-3. **Eventos / inducciones / capacitaciones** (`/Funcionarios/eventos`)
-   - Eventos donde participa con estado de asistencia.
-   - Acción: confirmar asistencia y firmar acta del evento.
+### UI admin
+- Página `/incapacidades` con tabla, filtros (empleado, tipo, estado, fechas), KPIs (días totales del mes, top causas).
+- Form crear/editar con cálculo automático de días, carga de PDF, vinculación a vigilancia epidemiológica si aplica.
+- En **Ficha Técnica** del empleado: tab "Incapacidades" con historial.
+- Botón "Marcar transcrita en nómina" para conciliación.
 
-4. **Exámenes médicos** (`/Funcionarios/examenes`)
-   - Historial de exámenes ocupacionales (ingreso, periódicos, egreso).
-   - Descarga de documento del examen (respetando privacidad: solo los suyos).
-   - Firma de constancia cuando aplique.
+### UI portal
+- `/Funcionarios/incapacidades`: lista + botón "Reportar nueva incapacidad" con form (tipo, fechas, entidad, subir PDF). Estado visible al empleado.
 
-5. **Dotación / EPP** (`/Funcionarios/dotacion`)
-   - Entregas recibidas con tallas y fechas.
-   - Pendientes por firmar entrega.
+---
 
-6. **Certificados laborales** (`/Funcionarios/certificados`)
-   - Generación de certificados a partir de plantillas habilitadas para el empleado.
-   - Descarga en PDF e historial de descargas.
+## 2. Carga de evidencias desde el portal (transversal)
 
-7. **Perfil editable** (`/Funcionarios/perfil`)
-   - Datos personales editables permitidos (teléfono, dirección, contacto emergencia, EPS, ARL, foto).
-   - Datos laborales en solo lectura.
-   - Cambio de contraseña en cualquier momento.
+- Nuevo componente `PortalEvidenceUpload` reutilizable.
+- Permitir adjuntar evidencias en:
+  - Cursos (certificados externos)
+  - Exámenes (resultados que trae el empleado)
+  - Dotación (foto de elemento recibido)
+  - Incapacidades (PDF de la EPS)
+- RLS: `INSERT` en `evidences` cuando `uploaded_by_employee_id = get_current_employee_id()` y el registro padre pertenece al empleado.
+- Admin ve indicador "Cargado por empleado" para revisar.
 
-8. **Vigilancia epidemiológica** (`/Funcionarios/vigilancias`)
-   - Vigilancias en las que está incluido (solo lectura) con próximas fechas de seguimiento.
+---
 
-### Cambios transversales
+## 3. Notificaciones al empleado
 
-- **Dashboard del portal**: ampliar contadores para incluir cursos vencidos, evaluaciones pendientes y exámenes próximos.
-- **Sidebar del portal**: añadir las nuevas entradas con íconos grandes y etiquetas en español sencillo.
-- **Firmas**: centralizar la apertura de `SignatureDialog` desde cada módulo, escribiendo en `signatures` con `signer_id = employee_id` actual.
-- **Hook `usePortalEmployee`**: extender para exponer helpers (`canEditField`, `currentEmployeeId`, `tenantId`).
-- **RLS adicional**: revisar y, si falta, añadir políticas para que el empleado pueda:
-  - `SELECT/UPDATE` en `evaluation_responses` propias.
-  - `SELECT` en `event_participants`, `courses`, `exams`, `vigilancias`, `dotacion`, `certificate_templates` filtrados por `employee_id = get_current_employee_id()`.
-  - `INSERT` en `signatures` y `evidences` ligados a su `employee_id`.
-- **Storage**: políticas para que el empleado descargue solo archivos cuyo `employee_id` coincida (`exam-documents`, `evidences`, `signatures`).
+- Extender tabla `notifications` o crear `employee_notifications` (decidir según el modelo actual; preferencia: reutilizar `notifications` agregando `employee_id` nullable).
+- Generador (edge function `generate-employee-notifications`, scheduled diario):
+  - Documentos pendientes por firmar
+  - Cursos próximos a vencer o vencidos
+  - Evaluaciones asignadas
+  - Exámenes médicos programados
+  - Incapacidad cambia de estado
+- Email opcional por empleado (preferencia configurable en `PortalPerfil`).
+- Campana de notificaciones en `EmployeePortalLayout` (igual al admin pero scope empleado).
 
-### Detalles técnicos
+---
 
-- Reutilizar componentes existentes (`SignatureDialog`, `EvaluacionExecForm`, `RegulationViewer`, `CertificateGenerator`) envueltos en wrappers de portal que fuercen `employee_id = currentEmployeeId`.
-- Cliente: `portalSupabase` (ya creado) para todas las queries del portal.
-- Tipografía 16–18px, botones grandes, mensajes en español claro.
-- Mobile-first: layout de una sola columna en <768px, tarjetas apilables.
-- Sin cambios al esquema más allá de políticas RLS adicionales y, si fuera necesario, una vista materializada de "pendientes por empleado" para el dashboard.
+## 4. PWA / instalable
 
-### Fuera de alcance (Fase 3)
+- `vite-plugin-pwa` con manifest (nombre "NexuRH Empleados", icono `nexurh-icon`, theme color), service worker básico (network-first para datos, cache-first para assets).
+- Banner "Instalar app" en login del portal y en dashboard si no está instalada.
+- Offline fallback simple: mostrar pantalla "Sin conexión" cuando falla la red.
 
-- Notificaciones push/email al empleado.
-- PWA / instalación móvil.
-- Carga de evidencias desde el lado empleado (ya cubierto parcialmente; se ampliará en Fase 3).
+---
+
+## 5. Historial de actividad del empleado
+
+- Tabla `employee_activity_log`: `id, tenant_id, employee_id, action, entity_type, entity_id, metadata jsonb, created_at`.
+- Triggers o escritura desde el frontend del portal en: login, firma, descarga de certificado/desprendible, cambio de contraseña, carga de evidencia, reporte de incapacidad.
+- Vista en `/Funcionarios/historial` con timeline. Admin lo ve también desde Ficha Técnica.
+
+---
+
+## Detalles técnicos
+
+- Reutilizar `portalSupabase` para todas las consultas del portal.
+- Permisos dinámicos: nuevo módulo `incapacidades` con acciones estándar (view/create/edit/delete/manage).
+- Mantener tipografía 16–18px y mobile-first en todas las nuevas vistas del portal.
+- Sin cambios destructivos a tablas existentes.
+
+---
+
+## Orden de implementación sugerido
+
+1. Migración: tabla `incapacidades` + maestros + bucket + RLS + activity_log + notifications.employee_id.
+2. Módulo admin Incapacidades (página + form + tab ficha técnica).
+3. Portal: vista Incapacidades con reporte por empleado.
+4. Carga de evidencias desde portal en módulos existentes.
+5. Notificaciones al empleado + campana en layout.
+6. PWA (manifest + SW).
+7. Historial de actividad + timeline.
+
+¿Procedo con todo en este orden, o prefieres que arranque solo por el módulo de Incapacidades y dejemos PWA/notificaciones/historial para una iteración posterior?
