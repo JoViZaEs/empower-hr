@@ -6,12 +6,9 @@ const corsHeaders = {
 }
 
 // Genera notificaciones in-app dirigidas al EMPLEADO (employee_id en notifications).
-// Casos:
-//   - Pendientes de firmar (signatures.status = 'pending')
-//   - Cursos próximos a vencer
-//   - Exámenes médicos próximos a vencer
-//   - Evaluaciones pendientes
-//   - Cambios de estado en incapacidades del empleado
+// Dedupe: por (employee_id, type, link) en ventana de 24h. El link incluye un
+// identificador único por recurso (?sig=, ?curso=, ?examen=, ?eval=, ?inc=) para
+// que múltiples eventos del mismo tipo en el mismo empleado no se colapsen.
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders })
 
@@ -20,29 +17,34 @@ Deno.serve(async (req) => {
     const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     const supabase = createClient(url, serviceKey)
 
-    const today = new Date()
-    const isoToday = today.toISOString().split('T')[0]
-    const in30 = new Date(today); in30.setDate(in30.getDate() + 30)
+    const now = new Date()
+    const isoToday = now.toISOString().split('T')[0]
+    const in30 = new Date(now); in30.setDate(in30.getDate() + 30)
     const iso30 = in30.toISOString().split('T')[0]
+    const windowStart = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString()
 
     const created: any[] = []
+    const skipped: any[] = []
 
     const pushIfNew = async (n: {
       tenant_id: string; employee_id: string; type: string;
-      title: string; message: string; link?: string;
+      title: string; message: string; link: string;
     }) => {
-      const yesterday = new Date(today); yesterday.setDate(yesterday.getDate() - 1)
-      const { data: existing } = await supabase
+      const { data: existing, error: selErr } = await supabase
         .from('notifications')
         .select('id')
         .eq('employee_id', n.employee_id)
         .eq('type', n.type)
-        .eq('title', n.title)
-        .gte('created_at', yesterday.toISOString())
+        .eq('link', n.link)
+        .gte('created_at', windowStart)
         .limit(1)
-      if (existing && existing.length > 0) return
-      await supabase.from('notifications').insert({ ...n, read: false })
-      created.push(n)
+      if (selErr) { console.error('dedupe select error', selErr); return }
+      if (existing && existing.length > 0) { skipped.push(n.link); return }
+      const { error: insErr } = await supabase
+        .from('notifications')
+        .insert({ ...n, read: false })
+      if (insErr) { console.error('insert error', insErr, n); return }
+      created.push(n.link)
     }
 
     // 1. Firmas pendientes
@@ -56,7 +58,7 @@ Deno.serve(async (req) => {
         tenant_id: s.tenant_id, employee_id: s.employee_id, type: 'pendiente_firma',
         title: 'Tienes documentos por firmar',
         message: `Documento: ${s.document_name ?? s.document_type}`,
-        link: '/Funcionarios/firmar',
+        link: `/Funcionarios/firmar?sig=${s.id}`,
       })
     }
 
@@ -71,7 +73,7 @@ Deno.serve(async (req) => {
         tenant_id: c.tenant_id, employee_id: c.employee_id, type: 'curso_vencer',
         title: 'Curso próximo a vencer',
         message: `"${c.course_name}" vence el ${c.expiry_date}`,
-        link: '/Funcionarios/cursos',
+        link: `/Funcionarios/cursos?curso=${c.id}`,
       })
     }
 
@@ -86,11 +88,11 @@ Deno.serve(async (req) => {
         tenant_id: e.tenant_id, employee_id: e.employee_id, type: 'examen_vencer',
         title: 'Examen médico próximo a vencer',
         message: `"${e.exam_type}" vence el ${e.expiry_date}`,
-        link: '/Funcionarios/examenes',
+        link: `/Funcionarios/examenes?examen=${e.id}`,
       })
     }
 
-    // 4. Evaluaciones pendientes (autoevaluación)
+    // 4. Evaluaciones pendientes
     const { data: evals } = await supabase
       .from('evaluations')
       .select('id, employee_id, tenant_id, status')
@@ -101,28 +103,27 @@ Deno.serve(async (req) => {
         tenant_id: ev.tenant_id, employee_id: ev.employee_id, type: 'evaluacion_pendiente',
         title: 'Evaluación pendiente',
         message: 'Tienes una evaluación por completar',
-        link: '/Funcionarios/evaluaciones',
+        link: `/Funcionarios/evaluaciones?eval=${ev.id}`,
       })
     }
 
-    // 5. Incapacidades con cambio de estado reciente (24h)
-    const last24h = new Date(today); last24h.setDate(last24h.getDate() - 1)
+    // 5. Incapacidades con cambio de estado en últimas 24h
     const { data: incs } = await supabase
       .from('incapacidades')
       .select('id, employee_id, tenant_id, estado, tipo, updated_at')
-      .gte('updated_at', last24h.toISOString())
+      .gte('updated_at', windowStart)
       .in('estado', ['aprobada', 'rechazada', 'transcrita_nomina'])
     for (const i of incs ?? []) {
       await pushIfNew({
         tenant_id: i.tenant_id, employee_id: i.employee_id, type: `incapacidad_${i.estado}`,
         title: 'Actualización de incapacidad',
         message: `Tu incapacidad (${i.tipo.replace(/_/g, ' ')}) ahora está: ${i.estado.replace(/_/g, ' ')}`,
-        link: '/Funcionarios/incapacidades',
+        link: `/Funcionarios/incapacidades?inc=${i.id}`,
       })
     }
 
     return new Response(
-      JSON.stringify({ success: true, created: created.length }),
+      JSON.stringify({ success: true, created: created.length, skipped: skipped.length }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   } catch (error) {
