@@ -81,6 +81,8 @@ const App = () => (
               <Route path="/Funcionarios/inicio" element={<EmployeePortalProtectedRoute><PortalDashboard /></EmployeePortalProtectedRoute>} />
               <Route path="/Funcionarios/pendientes/firmar" element={<EmployeePortalProtectedRoute><PortalPendientesFirmar /></EmployeePortalProtectedRoute>} />
               <Route path="/Funcionarios/pendientes/hacer" element={<EmployeePortalProtectedRoute><PortalPendientesHacer /></EmployeePortalProtectedRoute>} />
+              <Route path="/Funcionarios/mi-actividad" element={<EmployeePortalProtectedRoute><PortalCursos /></EmployeePortalProtectedRoute>} />
+              <Route path="/Funcionarios/mi-actividad/cursos" element={<EmployeePortalProtectedRoute><PortalCursos /></EmployeePortalProtectedRoute>} />
               <Route path="/Funcionarios/desprendibles" element={<EmployeePortalProtectedRoute><PortalDesprendibles /></EmployeePortalProtectedRoute>} />
               <Route path="/Funcionarios/reglamento" element={<EmployeePortalProtectedRoute><PortalReglamento /></EmployeePortalProtectedRoute>} />
               <Route path="/Funcionarios/certificados" element={<EmployeePortalProtectedRoute><PortalCertificados /></EmployeePortalProtectedRoute>} />
